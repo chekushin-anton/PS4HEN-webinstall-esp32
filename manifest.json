@@ -1,6 +1,6 @@
 {
   "name": "PS4 Exploit Host",
-  "version": "3.0.0",
+  "version": "5.0.0",
   "new_install_prompt_erase": true,
   "builds": [
     {
@@ -9,7 +9,8 @@
         { "path": "firmware/bootloader.bin", "offset": 0 },
         { "path": "firmware/partitions.bin", "offset": 32768 },
         { "path": "firmware/boot_app0.bin",  "offset": 57344 },
-        { "path": "firmware/firmware.bin",   "offset": 65536 }
+        { "path": "firmware/firmware.bin",   "offset": 65536 },
+        { "path": "firmware/spiffs.bin",     "offset": 4259840 }
       ]
     }
   ]
