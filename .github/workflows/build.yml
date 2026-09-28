@@ -30,10 +30,10 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
 
-      - name: Compile sketch
+           - name: Compile sketch
         run: |
           arduino-cli compile \
-            --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=disabled \
+            --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default,USBMode=default \
             --output-dir ./build \
             ESP32-S3-LittleFS-WebServer
 
