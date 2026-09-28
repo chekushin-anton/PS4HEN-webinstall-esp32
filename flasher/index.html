@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32-S3 Web Flasher</title>
+  <style>
+    body { font-family: sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; }
+    .warning { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 16px; margin: 20px 0; }
+    esp-web-install-button { display: block; margin: 24px 0; }
+  </style>
+  <script type="module" 
+    src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module">
+  </script>
+</head>
+<body>
+  <h1>Прошивка ESP32-S3</h1>
+  
+  <div class="warning">
+    <strong>⚠️ Внимание:</strong> Прошивка работает только в браузерах 
+    <strong>Chrome, Edge или Opera</strong> на компьютере (Web Serial API).
+  </div>
+
+  <ol>
+    <li>Подключите ESP32-S3 к компьютеру по USB.</li>
+    <li>Нажмите кнопку ниже.</li>
+    <li>Выберите последовательный порт в диалоговом окне браузера.</li>
+    <li>Дождитесь завершения прошивки.</li>
+  </ol>
+
+  <esp-web-install-button manifest="manifest.json">
+    <button slot="activate">🔌 Подключить и прошить</button>
+  </esp-web-install-button>
+
+  <p>После прошивки устройство создаст точку доступа <code>ESP32-Setup</code> 
+  с паролем <code>password</code>. Подключитесь к ней и откройте 
+  <code>http://192.168.4.1</code> для настройки Wi-Fi.</p>
+</body>
+</html>

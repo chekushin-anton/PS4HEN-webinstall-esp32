@@ -1,0 +1,19 @@
+# Arduino IDE build artifacts
+build/
+*.elf
+*.map
+*.merged.bin
+*_flashed.bin
+build.options.json
+flash_args
+sdkconfig
+partitions.csv
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace

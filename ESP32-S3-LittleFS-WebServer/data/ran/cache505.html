@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html manifest="505.manifest">
+<head>
+<meta charset="utf-8">
+<title>PS4 - Exploit Host - Cache 5.05</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="container">
+<header>
+<h1 class="main-title"><span class="name-mustafa">PS4 WEBKIT</span></h1>
+<div class="subtitle">Установка офлайн-кэша</div>
+<br>
+<div class="version-badge">FW 5.05</div>
+</header>
+<br><hr class="separator">
+<div class="status-bar"><span id="msgs" class="status-text loading">Установка кэша для 5.05...</span></div>
+</div>
+<script>
+var msgs=document.getElementById('msgs');
+function done(){msgs.innerHTML='Офлайн кеш установлен <br>Закройте и снова откройте браузер.';msgs.className='status-text success';}
+function fail(){msgs.innerHTML='Ошибка установки кэша. Очистите данные браузера и повторите.';msgs.className='status-text error';}
+window.applicationCache.addEventListener('cached',done,false);
+window.applicationCache.addEventListener('updateready',function(){try{window.applicationCache.swapCache();}catch(e){} done();},false);
+window.applicationCache.addEventListener('error',fail,false);
+window.applicationCache.addEventListener('noupdate',done,false);
+</script>
+</body>
+</html>

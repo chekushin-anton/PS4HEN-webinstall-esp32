@@ -1,0 +1,59 @@
+name: Build ESP32-S3 Firmware
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install arduino-cli
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Install ESP32 core
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls \
+            https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+
+      - name: Install libraries
+        run: |
+          arduino-cli lib install "WiFiManager"
+          arduino-cli lib install "ESPAsyncWebServer"
+          arduino-cli lib install "AsyncTCP"
+
+      - name: Compile sketch
+        run: |
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32s3 \
+            --output-dir ./build \
+            my-esp32-project.ino
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: build/*.bin
+
+      - name: Prepare flasher files
+        run: |
+          mkdir -p flasher/firmware
+          cp build/*.bootloader.bin flasher/firmware/bootloader.bin
+          cp build/*.partitions.bin flasher/firmware/partitions.bin
+          cp build/*.bin flasher/firmware/firmware.bin
+          # boot_app0.bin — копируем из core
+          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./flasher

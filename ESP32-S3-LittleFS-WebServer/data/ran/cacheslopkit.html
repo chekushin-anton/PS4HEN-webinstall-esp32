@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html manifest="slopkit.manifest">
+<head>
+    <meta charset="utf-8">
+    <title>PS4 - Exploit Host - Cache 11.50-13.00</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="main-title">
+                <span class="name-mustafa">PS4 WEBKIT</span>
+                </h1> <div class="subtitle">Рабочий диапазон</div>
+    <br>
+            <div class="version-badge">FW 11.50 - 13.00</div>
+    </header>  
+    <br>
+    <hr class="separator">
+    <div class="status-bar">  
+            <span id="msgs" class="status-text loading">
+                Установка офлайн кэша ...</span>  
+    </div>
+    <h1 style="margin-top: 40px; font-size: 14px; color: #555967;">  
+    Специально для 4PDA Sony PlayStation 4 - Взлом  
+        <br>  
+        Особая благодарность всем разработчикам сцены  
+    </h1>  
+</div>  
+
+    <script>
+        history.replaceState(null, null, 'index.html');
+        var histlength = history.length;
+        history.go(-histlength);
+        
+        var msgs = document.getElementById('msgs');
+        
+        function DLProgress(e) {
+            var Percent = Math.round(e.loaded / e.total * 100);
+            msgs.innerHTML = "Установка офлайн кэша: " + Percent + "%";
+        }
+        
+        function DisplayCacheProgress() {
+            msgs.innerHTML = "Офлайн кеш установлен";
+            msgs.className = "status-text success";
+            setTimeout(function() {
+                msgs.innerHTML = "Закройте и снова откройте браузер ...";
+            }, 1500);
+        }
+        
+        window.applicationCache.addEventListener("progress", DLProgress, false);
+        window.applicationCache.oncached = function(e) { DisplayCacheProgress(); };
+        window.applicationCache.onupdateready = function(e) { DisplayCacheProgress(); };
+        window.applicationCache.onerror = function(e) {
+            msgs.innerHTML = "Ошибка установки кэша! - Очистите данные и перезапустите браузер ...";
+            msgs.className = "status-text error";
+        };
+    </script>
+</body>
+</html>

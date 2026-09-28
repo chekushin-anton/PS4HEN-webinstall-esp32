@@ -1,0 +1,20 @@
+CACHE MANIFEST
+
+CACHE:
+../style.css
+goldhen_v2.4b18.12.bin
+index.html
+relapse/core.js
+relapse/core.js?v=10
+relapse/int64.js
+relapse/jb.js
+relapse/jb.js?log=0
+relapse/mem.js
+relapse/ps4_offsets.js
+relapse/rpc_worker.js
+relapse/patches/1302.bin
+relapse/patches/1350.bin
+relapse/patches/1352.bin
+
+NETWORK:
+*
