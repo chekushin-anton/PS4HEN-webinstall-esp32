@@ -15,14 +15,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install arduino-cli
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-          echo "$HOME/bin" >> $GITHUB_PATH
+      - name: Setup arduino-cli
+        uses: arduino/setup-arduino-cli@v1
 
       - name: Install ESP32 core
         run: |
-          arduino-cli config init
+          arduino-cli config init --overwrite
           arduino-cli config add board_manager.additional_urls \
             https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core update-index
@@ -55,15 +53,13 @@ jobs:
         run: |
           mkdir -p flasher/firmware
 
-          # Переименовываем и копируем четыре части прошивки
           cp build/*.bootloader.bin flasher/firmware/bootloader.bin
           cp build/*.partitions.bin flasher/firmware/partitions.bin
           cp build/*.ino.bin       flasher/firmware/firmware.bin
 
-          # boot_app0.bin лежит в ядре ESP32
-          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
+          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \; || \
+            find /home/runner -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
 
-          # Образ файловой системы
           cp spiffs.bin flasher/firmware/spiffs.bin
 
           echo "=== flasher/firmware ==="
