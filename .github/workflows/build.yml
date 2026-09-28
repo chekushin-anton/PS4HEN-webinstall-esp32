@@ -5,61 +5,39 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install arduino-cli
         run: |
-          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-          echo "$HOME/bin" >> $GITHUB_PATH
+          mkdir -p "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR="$HOME/.local/bin" sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install ESP32 core
         run: |
-          arduino-cli config init
+          arduino-cli config init --overwrite
           arduino-cli config add board_manager.additional_urls \
             https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
 
-      - name: Install libraries
-        run: |
-          arduino-cli lib install "WiFiManager"
-          arduino-cli lib install "ESPAsyncWebServer"
-          arduino-cli lib install "AsyncTCP"
-
       - name: Compile sketch
         run: |
           arduino-cli compile \
-            --fqbn esp32:esp32:esp32s3 \
+            --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=disabled \
             --output-dir ./build \
-            my-esp32-project.ino
+            ESP32-S3-LittleFS-WebServer
 
-      - name: Upload firmware artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: firmware
-          path: build/*.bin
-
-      - name: Prepare flasher files
-        run: |
-          mkdir -p flasher/firmware
-          cp build/*.bootloader.bin flasher/firmware/bootloader.bin
-          cp build/*.partitions.bin flasher/firmware/partitions.bin
-          cp build/*.bin flasher/firmware/firmware.bin
-          # boot_app0.bin — копируем из core
-          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./flasher
-          
-          
-                - name: Install mklittlefs
+      - name: Install mklittlefs
         run: |
           wget https://github.com/earlephilhower/mklittlefs/releases/download/4.0.0/mklittlefs-4.0.0-x86_64-linux-gnu.tar.gz
           tar -xzf mklittlefs-4.0.0-x86_64-linux-gnu.tar.gz
@@ -67,13 +45,40 @@ jobs:
 
       - name: Build LittleFS image
         run: |
-          mklittlefs -c ESP32-S3-LittleFS-WebServer/data -s 0xC00000 littlefs.bin
+          mklittlefs \
+            -c ESP32-S3-LittleFS-WebServer/data \
+            -s 0xBE0000 \
+            -p 256 \
+            -b 4096 \
+            spiffs.bin
+          ls -la spiffs.bin
 
-      - name: Copy firmware and LittleFS
+      - name: Prepare flasher files
         run: |
           mkdir -p flasher/firmware
           cp build/*.bootloader.bin flasher/firmware/bootloader.bin
           cp build/*.partitions.bin flasher/firmware/partitions.bin
-          cp build/*.bin flasher/firmware/firmware.bin
-          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
-          cp littlefs.bin flasher/firmware/littlefs.bin
+          cp build/*.ino.bin       flasher/firmware/firmware.bin
+          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \; || \
+            find /home/runner -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
+          cp spiffs.bin flasher/firmware/spiffs.bin
+          echo "=== flasher/firmware ==="
+          ls -la flasher/firmware
+
+      - name: Verify partitions.csv contains spiffs
+        run: |
+          if grep -q "^spiffs," ESP32-S3-LittleFS-WebServer/partitions.csv; then
+            echo "OK: partition 'spiffs' found"
+          else
+            echo "ERROR: 'spiffs' partition missing in partitions.csv"
+            cat ESP32-S3-LittleFS-WebServer/partitions.csv
+            exit 1
+          fi
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./flasher
+          publish_branch: gh-pages
+          force_orphan: true
