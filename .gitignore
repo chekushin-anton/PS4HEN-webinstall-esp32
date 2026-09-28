@@ -1,19 +1,51 @@
-# Arduino IDE build artifacts
+# ==================== Arduino IDE ====================
+# Временные папки сборки
 build/
+build.options.json
+sdkconfig
+sdkconfig.old
+
+# Промежуточные файлы компиляции
 *.elf
 *.map
 *.merged.bin
 *_flashed.bin
-build.options.json
+
+# Таблица разделов и аргументы прошивки (генерируются автоматически)
 flash_args
-sdkconfig
 partitions.csv
 
-# OS files
-.DS_Store
-Thumbs.db
+# Arduino sketch build cache
+*.tmp
+*.bak
 
-# IDE
+# ==================== VS Code / IDE ====================
 .vscode/
 .idea/
 *.code-workspace
+
+# ==================== Операционные системы ====================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+
+# ==================== Python (на случай скриптов) ====================
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ==================== Прочее ====================
+*.log
+*.swp
