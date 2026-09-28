@@ -1,15 +1,13 @@
 #include <WiFi.h>
 #include <WebServer.h>
-#include <FFat.h>
+#include <FFat.h>   // ← FFat, а не LittleFS
 
 // ==================== Wi-Fi settings ====================
-// Fill in these values to use your existing Wi-Fi network.
 const char *WIFI_SSID = "ps4hen";
 const char *WIFI_PASSWORD = "88880000";
 
-// If connecting to the network fails, the ESP32 starts this access point.
 const char *AP_SSID = "ps4hen";
-const char *AP_PASSWORD = "88880000";  // At least 8 characters.
+const char *AP_PASSWORD = "88880000";
 const uint32_t WIFI_CONNECT_TIMEOUT_MS = 15000;
 
 WebServer server(80);
@@ -49,9 +47,9 @@ void sendJson(int statusCode, const String &body) {
 bool sendFile(const String &requestedPath) {
   String path = requestedPath;
   if (path == "/") path = "/index.html";
-  if (!path.startsWith("/") || path.indexOf("..") >= 0 || !LittleFS.exists(path)) return false;
+  if (!path.startsWith("/") || path.indexOf("..") >= 0 || !FFat.exists(path)) return false;
 
-  File file = LittleFS.open(path, "r");
+  File file = FFat.open(path, "r");
   if (!file || file.isDirectory()) return false;
 
   server.sendHeader("Cache-Control", "no-cache");
@@ -77,8 +75,8 @@ void handleStatus() {
   json += "\",\"rssi\":" + String(accessPointMode ? 0 : WiFi.RSSI());
   json += ",\"uptime_ms\":" + String(millis());
   json += ",\"free_heap\":" + String(ESP.getFreeHeap());
-  json += ",\"littlefs_total\":" + String(LittleFS.totalBytes());
-  json += ",\"littlefs_used\":" + String(LittleFS.usedBytes());
+  json += ",\"fs_total\":" + String(FFat.totalBytes());
+  json += ",\"fs_used\":" + String(FFat.usedBytes());
   json += "}";
   sendJson(200, json);
 }
@@ -89,6 +87,27 @@ void handleHello() {
 
 void handleApiNotFound() {
   sendJson(404, "{\"error\":\"API endpoint not found\"}");
+}
+
+// Отладка: список файлов в FFat
+void handleDebugFiles() {
+  String out = "Files in FFat:\n";
+  File root = FFat.open("/");
+  if (!root || !root.isDirectory()) {
+    out += "(cannot open root)\n";
+  } else {
+    File f = root.openNextFile();
+    int count = 0;
+    while (f) {
+      out += String(f.name()) + "  (" + String(f.size()) + " bytes)\n";
+      f = root.openNextFile();
+      count++;
+    }
+    if (count == 0) out += "(empty)\n";
+  }
+  out += "\nTotal: " + String(FFat.totalBytes()) + " bytes\n";
+  out += "Used:  " + String(FFat.usedBytes()) + " bytes\n";
+  server.send(200, "text/plain; charset=utf-8", out);
 }
 
 void connectToWiFi() {
@@ -140,6 +159,9 @@ void setupRoutes() {
     server.send(204);
   });
 
+  // Отладочный маршрут: список файлов в FFat
+  server.on("/debug", HTTP_GET, handleDebugFiles);
+
   server.onNotFound([]() {
     if (server.method() == HTTP_OPTIONS && server.uri().startsWith("/api/")) {
       addCorsHeaders();
@@ -159,12 +181,19 @@ void setupRoutes() {
 void setup() {
   Serial.begin(115200);
   delay(500);
-  Serial.println("\nESP32-S3 LittleFS Web Server starting...");
+  Serial.println("\nESP32-S3 FFat Web Server starting...");
 
-  if (!LittleFS.begin(false)) {
-    Serial.println("ERROR: LittleFS mount failed. Upload data/ or format the filesystem once.");
+  // false — НЕ форматировать автоматически,
+  // чтобы было видно реальную ошибку монтирования
+  if (!FFat.begin(false)) {
+    Serial.println("ERROR: FFat mount failed!");
+    Serial.println("  -> ffat.bin not flashed, or wrong offset in manifest.json");
+    Serial.println("  -> Format manually: erase_flash and re-flash with ffat.bin");
   } else {
-    Serial.printf("LittleFS: %u / %u bytes used\n", LittleFS.usedBytes(), LittleFS.totalBytes());
+    Serial.printf("FFat: %u / %u bytes used\n", FFat.usedBytes(), FFat.totalBytes());
+    if (FFat.usedBytes() == 0) {
+      Serial.println("WARNING: FFat is EMPTY. ffat.bin was not written correctly.");
+    }
   }
 
   connectToWiFi();
