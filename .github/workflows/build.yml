@@ -57,3 +57,23 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./flasher
+          
+          
+                - name: Install mklittlefs
+        run: |
+          wget https://github.com/earlephilhower/mklittlefs/releases/download/4.0.0/mklittlefs-4.0.0-x86_64-linux-gnu.tar.gz
+          tar -xzf mklittlefs-4.0.0-x86_64-linux-gnu.tar.gz
+          sudo mv mklittlefs /usr/local/bin/
+
+      - name: Build LittleFS image
+        run: |
+          mklittlefs -c ESP32-S3-LittleFS-WebServer/data -s 0xC00000 littlefs.bin
+
+      - name: Copy firmware and LittleFS
+        run: |
+          mkdir -p flasher/firmware
+          cp build/*.bootloader.bin flasher/firmware/bootloader.bin
+          cp build/*.partitions.bin flasher/firmware/partitions.bin
+          cp build/*.bin flasher/firmware/firmware.bin
+          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
+          cp littlefs.bin flasher/firmware/littlefs.bin
