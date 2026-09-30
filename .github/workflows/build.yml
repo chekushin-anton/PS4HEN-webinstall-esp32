@@ -15,6 +15,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Show repository structure
+        run: |
+          echo "=== Root ==="
+          ls -la
+          echo "=== Looking for sketch folder ==="
+          for d in ESP32-WebServer ESP32-S3-LittleFS-WebServer ESP32-S3-WebServer; do
+            if [ -d "$d" ]; then
+              echo "Found: $d"
+              ls -la "$d"
+            fi
+          done
+
       - name: Install arduino-cli
         run: |
           mkdir -p "$HOME/.local/bin"
@@ -37,19 +49,58 @@ jobs:
       - name: Build firmware
         run: |
           set -e
+
+          # --- Определяем папку скетча ---
+          SKETCH=""
+          for candidate in ESP32-WebServer ESP32-S3-LittleFS-WebServer ESP32-S3-WebServer; do
+            if [ -d "$candidate" ] && ls "$candidate"/*.ino >/dev/null 2>&1; then
+              SKETCH="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$SKETCH" ]; then
+            echo "ERROR: sketch folder not found. Expected one of:"
+            echo "  ESP32-WebServer, ESP32-S3-LittleFS-WebServer, ESP32-S3-WebServer"
+            echo "Current root contents:"
+            ls -la
+            exit 1
+          fi
+
+          echo "=== Sketch folder: $SKETCH ==="
+          ls -la "$SKETCH"
+
+          # --- Готовим partitions.csv ---
+          if [ -f "$SKETCH/partitions-s3.csv" ]; then
+            cp "$SKETCH/partitions-s3.csv" "$SKETCH/partitions.csv"
+            echo "Created partitions.csv from partitions-s3.csv"
+          elif [ -f "$SKETCH/partitions.csv" ]; then
+            echo "Using existing partitions.csv"
+          else
+            echo "ERROR: neither partitions-s3.csv nor partitions.csv found in $SKETCH"
+            exit 1
+          fi
+
+          echo "=== partitions.csv ==="
+          cat "$SKETCH/partitions.csv"
+
           mkdir -p flasher/firmware flasher/manifests
           EXPLOITS="505 672 700 900 1352"
 
-          cp ESP32-WebServer/partitions.csv ESP32-WebServer/partitions.csv
-          arduino-cli compile --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default --output-dir ./build ESP32-WebServer
+          # --- Компиляция ---
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default \
+            --output-dir ./build "$SKETCH"
 
           cp build/*.bootloader.bin flasher/firmware/bootloader.bin
           cp build/*.partitions.bin flasher/firmware/partitions.bin
           cp build/*.ino.bin        flasher/firmware/firmware.bin
           find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
 
+          # --- spiffs: все эксплойты ---
           mklittlefs -c data -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs-all.bin
 
+          # --- spiffs: по одному эксплойту ---
           for e in $EXPLOITS; do
             rm -rf staging && mkdir -p staging/ran
             cp -r data/index.html data/style.css staging/ 2>/dev/null || true
@@ -58,10 +109,14 @@ jobs:
             mklittlefs -c staging -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs-$e.bin
           done
 
+          echo "=== flasher/firmware ==="
+          ls -la flasher/firmware
+
       - name: Generate manifests
         run: |
           set -e
           EXPLOITS="505 672 700 900 1352"
+
           gen() {
             local fw=$1 spiffs=$2
             local name="PS4 HEN — ESP32-S3 — FW ${fw}"
@@ -86,9 +141,12 @@ jobs:
           }
           EOF
           }
+
           gen all "spiffs-all.bin"
           for e in $EXPLOITS; do gen $e "spiffs-$e.bin"; done
-          echo "=== Manifests ===" && ls -la flasher/manifests/
+
+          echo "=== Manifests ==="
+          ls -la flasher/manifests/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
