@@ -47,18 +47,14 @@ jobs:
           spiffs,   data, spiffs,  0x410000,0xBE0000,
           coredump, data, coredump,0xFF0000,0x10000,
           EOF
-
-          echo "=== Generated partitions.csv ==="
-          cat "$SKETCH/partitions.csv"
-          echo "=== First two bytes (should NOT be 'PK') ==="
-          head -c 2 "$SKETCH/partitions.csv" | xxd
+          echo "=== partitions.csv (head) ==="
+          head -5 "$SKETCH/partitions.csv"
 
       - name: Build firmware
         run: |
           set -e
           SKETCH="ESP32-S3-LittleFS-WebServer"
-          mkdir -p flasher/firmware flasher/manifests
-          EXPLOITS="505 672 700 900 1352"
+          mkdir -p flasher/firmware
 
           arduino-cli compile \
             --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default \
@@ -69,56 +65,11 @@ jobs:
           cp build/*.ino.bin        flasher/firmware/firmware.bin
           find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
 
-          # «Все эксплойты»
-          mklittlefs -c data -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs-all.bin
-
-          # Каждый эксплойт отдельно
-          for e in $EXPLOITS; do
-            rm -rf staging && mkdir -p staging/ran
-            cp -r data/index.html data/style.css staging/ 2>/dev/null || true
-            cp -r data/ran/index.html data/ran/css data/ran/shared staging/ran/ 2>/dev/null || true
-            cp -r data/ran/$e staging/ran/
-            mklittlefs -c staging -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs-$e.bin
-          done
+          # Единый образ LittleFS со всем содержимым data/
+          mklittlefs -c "$SKETCH/data" -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs.bin
 
           echo "=== flasher/firmware ==="
           ls -la flasher/firmware
-
-      - name: Generate manifests
-        run: |
-          set -e
-          EXPLOITS="505 672 700 900 1352"
-
-          gen() {
-            local fw=$1 spiffs=$2
-            local name="PS4 HEN — ESP32-S3 — FW ${fw}"
-            [ "$fw" = "all" ] && name="PS4 HEN — ESP32-S3 — все эксплойты"
-            cat > flasher/manifests/s3-${fw}.json <<EOF
-          {
-            "name": "${name}",
-            "version": "1.0.0",
-            "new_install_prompt_erase": true,
-            "builds": [
-              {
-                "chipFamily": "ESP32-S3",
-                "parts": [
-                  { "path": "../firmware/bootloader.bin", "offset": 0 },
-                  { "path": "../firmware/partitions.bin", "offset": 32768 },
-                  { "path": "../firmware/boot_app0.bin",  "offset": 57344 },
-                  { "path": "../firmware/firmware.bin",   "offset": 65536 },
-                  { "path": "../firmware/${spiffs}",      "offset": 4259840 }
-                ]
-              }
-            ]
-          }
-          EOF
-          }
-
-          gen all "spiffs-all.bin"
-          for e in $EXPLOITS; do gen $e "spiffs-$e.bin"; done
-
-          echo "=== Manifests ==="
-          ls -la flasher/manifests/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

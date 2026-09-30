@@ -1,6 +1,6 @@
 {
-  "name": "PS4 Exploit Host",
-  "version": "5.1.0",
+  "name": "PS4 HEN — ESP32-S3",
+  "version": "1.0.0",
   "new_install_prompt_erase": true,
   "builds": [
     {
