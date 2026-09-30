@@ -25,17 +25,9 @@ jobs:
       - name: Install ESP32 core
         run: |
           arduino-cli config init --overwrite
-          arduino-cli config add board_manager.additional_urls \
-            https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
-
-           - name: Compile sketch
-        run: |
-          arduino-cli compile \
-            --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default,USBMode=default \
-            --output-dir ./build \
-            ESP32-S3-LittleFS-WebServer
 
       - name: Install mklittlefs
         run: |
@@ -43,37 +35,71 @@ jobs:
           tar -xzf mklittlefs-4.0.0-x86_64-linux-gnu.tar.gz
           sudo mv mklittlefs /usr/local/bin/
 
-      - name: Build LittleFS image
+      - name: Build firmware
         run: |
-          mklittlefs \
-            -c ESP32-S3-LittleFS-WebServer/data \
-            -s 0xBE0000 \
-            -p 256 \
-            -b 4096 \
-            spiffs.bin
-          ls -la spiffs.bin
+          set -e
+          mkdir -p flasher/firmware flasher/manifests
+          EXPLOITS="505 672 700 900 1352"
 
-      - name: Prepare flasher files
-        run: |
-          mkdir -p flasher/firmware
+          cp ESP32-WebServer/partitions-s3.csv ESP32-WebServer/partitions.csv
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default \
+            --output-dir ./build ESP32-WebServer
+
           cp build/*.bootloader.bin flasher/firmware/bootloader.bin
           cp build/*.partitions.bin flasher/firmware/partitions.bin
-          cp build/*.ino.bin       flasher/firmware/firmware.bin
-          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \; || \
-            find /home/runner -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
-          cp spiffs.bin flasher/firmware/spiffs.bin
-          echo "=== flasher/firmware ==="
-          ls -la flasher/firmware
+          cp build/*.ino.bin        flasher/firmware/firmware.bin
+          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
 
-      - name: Verify partitions.csv contains spiffs
+          # «Все эксплойты» — из всей папки data
+          echo "--- all exploits ---"
+          mklittlefs -c data -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs-all.bin
+
+          # По одному эксплойту
+          for e in $EXPLOITS; do
+            echo "--- FW $e ---"
+            rm -rf staging && mkdir -p staging/ran
+            cp -r data/index.html data/style.css staging/ 2>/dev/null || true
+            cp -r data/ran/index.html data/ran/css data/ran/shared staging/ran/ 2>/dev/null || true
+            cp -r data/ran/$e staging/ran/
+            mklittlefs -c staging -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs-$e.bin
+          done
+
+      - name: Generate manifests
         run: |
-          if grep -q "^spiffs," ESP32-S3-LittleFS-WebServer/partitions.csv; then
-            echo "OK: partition 'spiffs' found"
-          else
-            echo "ERROR: 'spiffs' partition missing in partitions.csv"
-            cat ESP32-S3-LittleFS-WebServer/partitions.csv
-            exit 1
-          fi
+          set -e
+          EXPLOITS="505 672 700 900 1352"
+
+          gen() {
+            local fw=$1 spiffs=$2
+            local name="PS4 HEN — ESP32-S3 — FW ${fw}"
+            [ "$fw" = "all" ] && name="PS4 HEN — ESP32-S3 — все эксплойты"
+            cat > flasher/manifests/s3-${fw}.json <<EOF
+          {
+            "name": "${name}",
+            "version": "1.0.0",
+            "new_install_prompt_erase": true,
+            "builds": [
+              {
+                "chipFamily": "ESP32-S3",
+                "parts": [
+                  { "path": "../firmware/bootloader.bin", "offset": 0 },
+                  { "path": "../firmware/partitions.bin", "offset": 32768 },
+                  { "path": "../firmware/boot_app0.bin",  "offset": 57344 },
+                  { "path": "../firmware/firmware.bin",   "offset": 65536 },
+                  { "path": "../firmware/${spiffs}",      "offset": 4259840 }
+                ]
+              }
+            ]
+          }
+          EOF
+          }
+
+          gen all "spiffs-all.bin"
+          for e in $EXPLOITS; do gen $e "spiffs-$e.bin"; done
+
+          echo "=== Manifests ===" && ls -la flasher/manifests/
+          echo "=== Firmware ===" && ls -la flasher/firmware/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
