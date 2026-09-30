@@ -28,12 +28,6 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
 
-      - name: Install mklittlefs
-        run: |
-          wget https://github.com/earlephilhower/mklittlefs/releases/download/4.0.2/x86_64-linux-gnu-mklittlefs-db0513a.tar.gz -O mklittlefs.tar.gz
-          tar -xzf mklittlefs.tar.gz
-          sudo mv mklittlefs /usr/local/bin/
-
       - name: Create partitions.csv
         run: |
           set -e
@@ -65,8 +59,15 @@ jobs:
           cp build/*.ino.bin        flasher/firmware/firmware.bin
           find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
 
-          # Единый образ LittleFS со всем содержимым data/
-          mklittlefs -c "$SKETCH/data" -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs.bin
+          MKLS=$(find ~/.arduino15 -name "mklittlefs" -type f | head -n 1)
+          echo "Found mklittlefs: $MKLS"
+          if [ -z "$MKLS" ]; then
+            echo "ERROR: mklittlefs not found"
+            exit 1
+          fi
+          chmod +x "$MKLS"
+
+          "$MKLS" -c "$SKETCH/data" -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs.bin
 
           echo "=== flasher/firmware ==="
           ls -la flasher/firmware
