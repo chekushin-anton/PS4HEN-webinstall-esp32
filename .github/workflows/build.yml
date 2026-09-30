@@ -20,7 +20,6 @@ jobs:
           mkdir -p "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR="$HOME/.local/bin" sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install ESP32 core
         run: |
@@ -31,8 +30,8 @@ jobs:
 
       - name: Install mklittlefs
         run: |
-          wget https://github.com/earlephilhower/mklittlefs/releases/download/4.0.0/mklittlefs-4.0.0-x86_64-linux-gnu.tar.gz
-          tar -xzf mklittlefs-4.0.0-x86_64-linux-gnu.tar.gz
+          wget https://github.com/earlephilhower/mklittlefs/releases/download/4.0.2/x86_64-linux-gnu-mklittlefs-db0513a.tar.gz -O mklittlefs.tar.gz
+          tar -xzf mklittlefs.tar.gz
           sudo mv mklittlefs /usr/local/bin/
 
       - name: Build firmware
@@ -42,22 +41,16 @@ jobs:
           EXPLOITS="505 672 700 900 1352"
 
           cp ESP32-WebServer/partitions-s3.csv ESP32-WebServer/partitions.csv
-          arduino-cli compile \
-            --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default \
-            --output-dir ./build ESP32-WebServer
+          arduino-cli compile --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default --output-dir ./build ESP32-WebServer
 
           cp build/*.bootloader.bin flasher/firmware/bootloader.bin
           cp build/*.partitions.bin flasher/firmware/partitions.bin
           cp build/*.ino.bin        flasher/firmware/firmware.bin
           find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
 
-          # «Все эксплойты» — из всей папки data
-          echo "--- all exploits ---"
           mklittlefs -c data -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs-all.bin
 
-          # По одному эксплойту
           for e in $EXPLOITS; do
-            echo "--- FW $e ---"
             rm -rf staging && mkdir -p staging/ran
             cp -r data/index.html data/style.css staging/ 2>/dev/null || true
             cp -r data/ran/index.html data/ran/css data/ran/shared staging/ran/ 2>/dev/null || true
@@ -69,7 +62,6 @@ jobs:
         run: |
           set -e
           EXPLOITS="505 672 700 900 1352"
-
           gen() {
             local fw=$1 spiffs=$2
             local name="PS4 HEN — ESP32-S3 — FW ${fw}"
@@ -94,12 +86,9 @@ jobs:
           }
           EOF
           }
-
           gen all "spiffs-all.bin"
           for e in $EXPLOITS; do gen $e "spiffs-$e.bin"; done
-
           echo "=== Manifests ===" && ls -la flasher/manifests/
-          echo "=== Firmware ===" && ls -la flasher/firmware/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
