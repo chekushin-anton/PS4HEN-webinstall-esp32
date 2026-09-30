@@ -122,19 +122,16 @@ void setupRoutes() {
 void setup() {
   Serial.begin(115200);
   delay(500);
-  Serial.println("\nPS4HEN ESP32-S3 starting...");
+  Serial.println("\nPS4 HEN Web Server starting...");
 
   if (!LittleFS.begin(false)) {
     Serial.println("WARNING: LittleFS not mounted. Formatting...");
-    if (LittleFS.begin(true)) {
-      Serial.println("LittleFS formatted and mounted");
-    } else {
+    if (!LittleFS.begin(true)) {
       Serial.println("ERROR: LittleFS mount failed");
     }
-  } else {
-    Serial.printf("LittleFS mounted: %u / %u bytes used\n",
-                  (unsigned)LittleFS.usedBytes(), (unsigned)LittleFS.totalBytes());
   }
+  Serial.printf("LittleFS: %u / %u bytes used\n",
+                (unsigned)LittleFS.usedBytes(), (unsigned)LittleFS.totalBytes());
 
   connectToWiFi();
   setupRoutes();
