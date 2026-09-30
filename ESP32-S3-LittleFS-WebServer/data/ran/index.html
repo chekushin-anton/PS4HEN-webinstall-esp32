@@ -47,8 +47,6 @@
         <div class="version-badge">FW 5.05 - 13.52</div>
     </div>
     <hr class="separator" style="margin: 10px auto;">
-    <br>
-    <br>
     <div style="flex: 1; min-height: 0;"></div>
     <div class="log-container" id="log-container">
         <div id="log-output"></div>
@@ -88,10 +86,16 @@
             if (fwNum >= 5.05 && fwNum <= 5.07) {
                 appendLog("Установка кэша для FW " + fwVersion + "...", "info");
                 setTimeout(function() { window.location.replace("cache_g2allpro.html"); }, 500);
+            } else if (fwNum >= 6.00 && fwNum < 6.72) {
+                appendLog("Установка кэша для FW " + fwVersion + "...", "info");
+                setTimeout(function() { window.location.replace("cache_psfree.html"); }, 500);
             } else if (fwNum >= 6.72 && fwNum <= 6.72) {
                 appendLog("Установка кэша для FW " + fwVersion + "...", "info");
                 setTimeout(function() { window.location.replace("cache672.html"); }, 500);
-            } else if (fwNum >= 7.00 && fwNum <= 13.00) {
+            } else if (fwNum >= 7.00 && fwNum <= 9.60) {
+                appendLog("Установка кэша для FW " + fwVersion + "...", "info");
+                setTimeout(function() { window.location.replace("cache_psfree.html"); }, 500);
+            } else if (fwNum >= 10.00 && fwNum <= 13.00) {
                 appendLog("Установка кэша для FW " + fwVersion + "...", "info");
                 setTimeout(function() { window.location.replace("cache_g2allpro.html"); }, 500);
             } else if (fwNum >= 13.02 && fwNum <= 13.52) {
@@ -113,6 +117,16 @@
                     if (e.data && e.data.type === 'statusG2') { appendLog(e.data.msg); }
                 });
             }
+            else if (fwNum >= 6.00 && fwNum < 6.72) {
+                appendLog("Запуск эксплойта для FW " + fwVersion + "...", "info");
+                var framePSFree1 = document.createElement('iframe');
+                framePSFree1.src = "psfree/index.html";
+                framePSFree1.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;";
+                document.body.appendChild(framePSFree1);
+                window.addEventListener('message', function(e) {
+                    if (e.data && e.data.type === 'statusPSFree') { appendLog(e.data.msg); }
+                });
+            }
             else if (fwNum >= 6.72 && fwNum <= 6.72) {
                 appendLog("Запуск эксплойта для FW " + fwVersion + "...", "info");
                 var frame672 = document.createElement('iframe');
@@ -123,7 +137,17 @@
                     if (e.data && e.data.type === 'status672') { appendLog(e.data.msg); }
                 });
             }
-            else if (fwNum >= 7.00 && fwNum <= 13.00) {
+            else if (fwNum >= 7.00 && fwNum <= 9.60) {
+                appendLog("Запуск эксплойта для FW " + fwVersion + "...", "info");
+                var framePSFree2 = document.createElement('iframe');
+                framePSFree2.src = "psfree/index.html";
+                framePSFree2.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;";
+                document.body.appendChild(framePSFree2);
+                window.addEventListener('message', function(e) {
+                    if (e.data && e.data.type === 'statusPSFree') { appendLog(e.data.msg); }
+                });
+            }
+            else if (fwNum >= 10.00 && fwNum <= 13.00) {
                 appendLog("Запуск эксплойта для FW " + fwVersion + "...", "info");
                 var frameG2b = document.createElement('iframe');
                 frameG2b.src = "g2allpro/index.html";
@@ -136,7 +160,7 @@
             else if (fwNum >= 13.02 && fwNum <= 13.52) {
                 appendLog("Запуск эксплойта для FW " + fwVersion + "...", "info");
                 var frame1352 = document.createElement('iframe');
-                frame1352.src = "1352/jb.html";
+                frame1352.src = "1352/jb.html?log=1";
                 frame1352.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;";
                 document.body.appendChild(frame1352);
                 window.addEventListener('message', function(e) {

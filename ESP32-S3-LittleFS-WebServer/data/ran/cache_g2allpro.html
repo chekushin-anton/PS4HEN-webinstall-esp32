@@ -46,7 +46,7 @@
             msgs.innerHTML = "Офлайн кеш установлен ✔";
             msgs.className = "status-text success";
             setTimeout(function() {
-                msgs.innerHTML = "Закройте и снова откройте браузер ...";
+                msgs.innerHTML = "Перезапустите консоль ...";
             }, 1500);
         }
         window.applicationCache.addEventListener("progress", DLProgress, false);
