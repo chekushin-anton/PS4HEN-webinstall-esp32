@@ -40,7 +40,7 @@ jobs:
           mkdir -p flasher/firmware flasher/manifests
           EXPLOITS="505 672 700 900 1352"
 
-          cp ESP32-WebServer/partitions-s3.csv ESP32-WebServer/partitions.csv
+          cp ESP32-WebServer/partitions.csv ESP32-WebServer/partitions.csv
           arduino-cli compile --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default --output-dir ./build ESP32-WebServer
 
           cp build/*.bootloader.bin flasher/firmware/bootloader.bin
