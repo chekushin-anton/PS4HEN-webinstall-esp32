@@ -20,60 +20,63 @@ jobs:
           mkdir -p "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR="$HOME/.local/bin" sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install ESP32 core
         run: |
           arduino-cli config init --overwrite
-          arduino-cli config add board_manager.additional_urls \
-            https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
 
-      - name: Compile sketch
+      - name: Create partitions.csv
         run: |
-          arduino-cli compile \
-            --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=disabled \
-            --output-dir ./build \
-            ESP32-S3-LittleFS-WebServer
+          set -e
+          SKETCH="ESP32-S3-LittleFS-WebServer"
+          cat > "$SKETCH/partitions.csv" <<'EOF'
+          # Name,   Type, SubType, Offset,  Size, Flags
+          nvs,      data, nvs,     0x9000,  0x5000,
+          otadata,  data, ota,     0xe000,  0x2000,
+          app0,     app,  ota_0,   0x10000, 0x200000,
+          app1,     app,  ota_1,   0x210000,0x200000,
+          spiffs,   data, spiffs,  0x410000,0xBE0000,
+          coredump, data, coredump,0xFF0000,0x10000,
+          EOF
+          echo "=== partitions.csv (head) ==="
+          head -5 "$SKETCH/partitions.csv"
 
-      - name: Install mklittlefs
+      - name: Build firmware
         run: |
-          wget https://github.com/earlephilhower/mklittlefs/releases/download/4.0.0/mklittlefs-4.0.0-x86_64-linux-gnu.tar.gz
-          tar -xzf mklittlefs-4.0.0-x86_64-linux-gnu.tar.gz
-          sudo mv mklittlefs /usr/local/bin/
-
-      - name: Build LittleFS image
-        run: |
-          mklittlefs \
-            -c ESP32-S3-LittleFS-WebServer/data \
-            -s 0xBE0000 \
-            -p 256 \
-            -b 4096 \
-            spiffs.bin
-          ls -la spiffs.bin
-
-      - name: Prepare flasher files
-        run: |
+          set -e
+          SKETCH="ESP32-S3-LittleFS-WebServer"
           mkdir -p flasher/firmware
+
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default \
+            --output-dir ./build "$SKETCH"
+
           cp build/*.bootloader.bin flasher/firmware/bootloader.bin
           cp build/*.partitions.bin flasher/firmware/partitions.bin
-          cp build/*.ino.bin       flasher/firmware/firmware.bin
-          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \; || \
-            find /home/runner -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
-          cp spiffs.bin flasher/firmware/spiffs.bin
-          echo "=== flasher/firmware ==="
-          ls -la flasher/firmware
+          cp build/*.ino.bin        flasher/firmware/firmware.bin
+          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
 
-      - name: Verify partitions.csv contains spiffs
-        run: |
-          if grep -q "^spiffs," ESP32-S3-LittleFS-WebServer/partitions.csv; then
-            echo "OK: partition 'spiffs' found"
-          else
-            echo "ERROR: 'spiffs' partition missing in partitions.csv"
-            cat ESP32-S3-LittleFS-WebServer/partitions.csv
+          echo "=== Searching for mklittlefs ==="
+          find ~/.arduino15 -name "*littlefs*" -o -name "*mklittlefs*" || true
+
+          MKLS=$(find ~/.arduino15 -type f -name "mklittlefs*" 2>/dev/null | head -n 1)
+          echo "Found mklittlefs: '$MKLS'"
+
+          if [ -z "$MKLS" ]; then
+            echo "ERROR: mklittlefs not found in arduino15"
+            echo "Contents of ~/.arduino15/packages/esp32/tools/:"
+            ls -la ~/.arduino15/packages/esp32/tools/ || true
             exit 1
           fi
+
+          chmod +x "$MKLS"
+          "$MKLS" -c "$SKETCH/data" -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs.bin
+
+          echo "=== flasher/firmware ==="
+          ls -la flasher/firmware
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
