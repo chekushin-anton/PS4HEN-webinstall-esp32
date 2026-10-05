@@ -1,1 +1,1 @@
-"C:\Users\user\AppData\Local\Arduino15\packages\esp32\tools\mklittlefs\4.0.2-db0513a\mklittlefs.exe" -c "webinstall_esp32_ps4hen\data" -s 0xBE0000 -p 256 -b 4096 "spiffs.bin"
+"C:\Users\user\AppData\Local\Arduino15\packages\esp32\tools\mklittlefs\4.0.2-db0513a\mklittlefs.exe" -d -c "ESP32-S3-LittleFS-WebServer\data" -s 0xBE0000 -p 256 -b 4096 "flasher\firmware\spiffs.bin"
