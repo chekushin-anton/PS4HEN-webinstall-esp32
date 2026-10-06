@@ -1,6 +1,14 @@
+#if defined(ESP8266)
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <LittleFS.h>
+using HttpServer = ESP8266WebServer;
+#else
 #include <WiFi.h>
 #include <WebServer.h>
 #include <LittleFS.h>
+using HttpServer = WebServer;
+#endif
 
 const char *WIFI_SSID = "ps4hen";
 const char *WIFI_PASSWORD = "88880000";
@@ -8,14 +16,43 @@ const char *AP_SSID = "ps4hen";
 const char *AP_PASSWORD = "88880000";
 const uint32_t WIFI_CONNECT_TIMEOUT_MS = 15000;
 
-WebServer server(80);
+HttpServer server(80);
 bool accessPointMode = false;
+
+bool mountLittleFS(bool formatOnFailure) {
+#if defined(ESP8266)
+  if (LittleFS.begin()) return true;
+  if (!formatOnFailure || !LittleFS.format()) return false;
+  return LittleFS.begin();
+#else
+  return LittleFS.begin(formatOnFailure);
+#endif
+}
+
+uint32_t littleFSTotalBytes() {
+#if defined(ESP8266)
+  FSInfo info;
+  return LittleFS.info(info) ? info.totalBytes : 0;
+#else
+  return LittleFS.totalBytes();
+#endif
+}
+
+uint32_t littleFSUsedBytes() {
+#if defined(ESP8266)
+  FSInfo info;
+  return LittleFS.info(info) ? info.usedBytes : 0;
+#else
+  return LittleFS.usedBytes();
+#endif
+}
 
 const char *contentTypeFor(const String &path) {
   if (path.endsWith(".html") || path.endsWith(".htm")) return "text/html; charset=utf-8";
   if (path.endsWith(".css")) return "text/css; charset=utf-8";
   if (path.endsWith(".js"))  return "application/javascript; charset=utf-8";
   if (path.endsWith(".json")) return "application/json; charset=utf-8";
+  if (path.endsWith(".manifest")) return "text/cache-manifest; charset=utf-8";
   if (path.endsWith(".svg")) return "image/svg+xml";
   if (path.endsWith(".png")) return "image/png";
   if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
@@ -62,8 +99,8 @@ void handleStatus() {
   String json = "{\"mode\":\"";
   json += accessPointMode ? "AP" : "STA";
   json += "\",\"ip\":\"" + ip.toString() + "\"";
-  json += ",\"fs_total\":" + String(LittleFS.totalBytes());
-  json += ",\"fs_used\":" + String(LittleFS.usedBytes());
+  json += ",\"fs_total\":" + String(littleFSTotalBytes());
+  json += ",\"fs_used\":" + String(littleFSUsedBytes());
   json += ",\"free_heap\":" + String(ESP.getFreeHeap());
   json += "}";
   sendJson(200, json);
@@ -124,14 +161,14 @@ void setup() {
   delay(500);
   Serial.println("\nPS4 HEN Web Server starting...");
 
-  if (!LittleFS.begin(false)) {
+  if (!mountLittleFS(false)) {
     Serial.println("WARNING: LittleFS not mounted. Formatting...");
-    if (!LittleFS.begin(true)) {
+    if (!mountLittleFS(true)) {
       Serial.println("ERROR: LittleFS mount failed");
     }
   }
   Serial.printf("LittleFS: %u / %u bytes used\n",
-                (unsigned)LittleFS.usedBytes(), (unsigned)LittleFS.totalBytes());
+                (unsigned)littleFSUsedBytes(), (unsigned)littleFSTotalBytes());
 
   connectToWiFi();
   setupRoutes();

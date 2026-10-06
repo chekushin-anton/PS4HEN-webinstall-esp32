@@ -49,3 +49,11 @@ venv/
 # ==================== Прочее ====================
 *.log
 *.swp
+
+# Firmware variants and manifests generated for GitHub Pages
+/flasher/manifests/
+/flasher/firmware/esp32-c3/
+/flasher/firmware/esp32-s2/
+/flasher/firmware/esp32-s3/
+/flasher/firmware/esp8266/
+/flasher/firmware/filesystems/

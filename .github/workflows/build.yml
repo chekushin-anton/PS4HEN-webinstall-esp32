@@ -1,4 +1,4 @@
-name: Build ESP32-S3 Firmware
+name: Build and publish PS4HEN web installer
 
 on:
   push:
@@ -9,79 +9,43 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install arduino-cli
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Arduino CLI
         run: |
           mkdir -p "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR="$HOME/.local/bin" sh
 
-      - name: Install ESP32 core
+      - name: Install ESP32 and ESP8266 cores
         run: |
           arduino-cli config init --overwrite
           arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli config add board_manager.additional_urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
           arduino-cli core update-index
-          arduino-cli core install esp32:esp32
+          arduino-cli core install esp32:esp32 esp8266:esp8266
 
-      - name: Create partitions.csv
+      - name: Build board firmware and PS4 firmware variants
+        run: python tools/build_firmware.py
+
+      - name: Prepare GitHub Pages files
         run: |
-          set -e
-          SKETCH="ESP32-S3-LittleFS-WebServer"
-          cat > "$SKETCH/partitions.csv" <<'EOF'
-          # Name,   Type, SubType, Offset,  Size, Flags
-          nvs,      data, nvs,     0x9000,  0x5000,
-          otadata,  data, ota,     0xe000,  0x2000,
-          app0,     app,  ota_0,   0x10000, 0x200000,
-          app1,     app,  ota_1,   0x210000,0x200000,
-          spiffs,   data, spiffs,  0x410000,0xBE0000,
-          coredump, data, coredump,0xFF0000,0x10000,
-          EOF
-          echo "=== partitions.csv (head) ==="
-          head -5 "$SKETCH/partitions.csv"
+          mkdir -p site-dist
+          cp -a flasher/. site-dist/
 
-      - name: Build firmware
-        run: |
-          set -e
-          SKETCH="ESP32-S3-LittleFS-WebServer"
-          mkdir -p flasher/firmware
-
-          arduino-cli compile \
-            --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default \
-            --output-dir ./build "$SKETCH"
-
-          cp build/*.bootloader.bin flasher/firmware/bootloader.bin
-          cp build/*.partitions.bin flasher/firmware/partitions.bin
-          cp build/*.ino.bin        flasher/firmware/firmware.bin
-          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
-
-          echo "=== Searching for mklittlefs ==="
-          find ~/.arduino15 -name "*littlefs*" -o -name "*mklittlefs*" || true
-
-          MKLS=$(find ~/.arduino15 -type f -name "mklittlefs*" 2>/dev/null | head -n 1)
-          echo "Found mklittlefs: '$MKLS'"
-
-          if [ -z "$MKLS" ]; then
-            echo "ERROR: mklittlefs not found in arduino15"
-            echo "Contents of ~/.arduino15/packages/esp32/tools/:"
-            ls -la ~/.arduino15/packages/esp32/tools/ || true
-            exit 1
-          fi
-
-          chmod +x "$MKLS"
-          "$MKLS" -c "$SKETCH/data" -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs.bin
-
-          echo "=== flasher/firmware ==="
-          ls -la flasher/firmware
-
-      - name: Deploy to GitHub Pages
+      - name: Publish web flasher to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./flasher
+          publish_dir: ./site-dist
           publish_branch: gh-pages
           force_orphan: true

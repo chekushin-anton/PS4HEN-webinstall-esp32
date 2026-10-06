@@ -1,6 +1,213 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta http-equiv="refresh" content="0; url=./flasher/">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PS4HEN — веб-установщик</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --card: rgba(20, 27, 39, .88);
+      --card-2: rgba(255, 255, 255, .045);
+      --border: rgba(255, 255, 255, .09);
+      --text: #f5f7fb;
+      --muted: #98a2b3;
+      --accent: #7c5cff;
+      --accent-2: #4cc9f0;
+      --warning: #f7c948;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 34px 16px;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(124,92,255,.20), transparent 32%),
+        radial-gradient(circle at 85% 15%, rgba(76,201,240,.13), transparent 28%),
+        linear-gradient(145deg, #080b12, #101624 55%, #0a0e16);
+    }
+    .wrap { width: min(760px, 100%); }
+    .hero { text-align: center; margin-bottom: 24px; }
+    .logo {
+      width: 68px; height: 68px; margin: 0 auto 14px; border-radius: 20px;
+      display: grid; place-items: center; font-size: 32px;
+      background: linear-gradient(135deg, #7c5cff, #4cc9f0);
+    }
+    h1 { margin: 0; font-size: clamp(28px, 6vw, 42px); letter-spacing: -1px; }
+    .subtitle { max-width: 590px; margin: 12px auto 0; color: var(--muted); line-height: 1.55; }
+    .card {
+      padding: 24px; border: 1px solid var(--border); border-radius: 22px;
+      background: var(--card); box-shadow: 0 24px 70px rgba(0,0,0,.35);
+    }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    label { display: block; color: var(--muted); font-size: 13px; font-weight: 650; }
+    select {
+      display: block; width: 100%; min-height: 48px; margin-top: 7px; padding: 0 12px;
+      color: var(--text); background: #151c29; border: 1px solid var(--border);
+      border-radius: 12px; font: inherit;
+    }
+    select:focus { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+    .device {
+      display: flex; align-items: center; gap: 12px; margin: 18px 0;
+      padding: 14px; border-radius: 15px; background: var(--card-2); border: 1px solid var(--border);
+    }
+    .device-icon {
+      width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center;
+      border-radius: 13px; background: rgba(124,92,255,.14); font-size: 22px;
+    }
+    .device-title { font-weight: 750; margin-bottom: 3px; }
+    .device-subtitle { color: var(--muted); font-size: 12px; }
+    esp-web-install-button { display: block; width: 100%; }
+    esp-web-install-button button {
+      width: 100%; min-height: 58px; padding: 0 20px; border: 0; border-radius: 15px;
+      color: #fff; background: linear-gradient(135deg, var(--accent), #6550e9);
+      box-shadow: 0 12px 28px rgba(124,92,255,.28); font: inherit; font-weight: 750;
+      cursor: pointer;
+    }
+    .compatibility { margin-top: 12px; color: var(--muted); text-align: center; font-size: 12px; }
+    .note {
+      margin-top: 18px; padding: 14px 16px; border-radius: 14px;
+      background: rgba(247,201,72,.07); border: 1px solid rgba(247,201,72,.18);
+      color: #d7dce5; font-size: 12px; line-height: 1.55;
+    }
+    .note strong { color: #f7d76c; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+    .step { padding: 14px; border: 1px solid var(--border); border-radius: 15px; background: var(--card-2); }
+    .step-number { color: var(--accent-2); font-size: 11px; font-weight: 800; }
+    .step-title { margin-top: 8px; font-size: 13px; font-weight: 700; }
+    .step-text { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    footer { margin-top: 18px; color: #697386; text-align: center; font-size: 11px; }
+    @media (max-width: 620px) {
+      body { padding: 22px 12px; }
+      .card { padding: 16px; }
+      .field-grid, .steps { grid-template-columns: 1fr; }
+    }
+  </style>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 </head>
+<body>
+  <main class="wrap">
+    <header class="hero">
+      <div class="logo">⚡</div>
+      <h1>PS4HEN Web Install</h1>
+      <p class="subtitle">Выберите плату и установленную прошивку PS4. Для небольших плат установщик запишет только подходящий набор файлов эксплойта.</p>
+    </header>
+
+    <section class="card">
+      <div class="field-grid">
+        <label for="board">Плата
+          <select id="board">
+            <option value="" selected disabled>Выберите плату</option>
+            <option value="esp32-c3">ESP32-C3 SuperMini · 4 MB</option>
+            <option value="esp32-c3">ESP32-C3 Zero · 4 MB</option>
+            <option value="esp32-s2">ESP32-S2 Mini · 4 MB</option>
+            <option value="esp8266">ESP8266 · 4 MB flash</option>
+            <option value="esp32-s3">ESP32-S3 DevKit · 16 MB</option>
+          </select>
+        </label>
+        <label for="ps4-firmware">Прошивка PS4
+          <select id="ps4-firmware">
+            <option value="" selected disabled>Выберите версию PS4</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="device">
+        <div class="device-icon">▣</div>
+        <div>
+          <div class="device-title" id="device-title">Выберите плату</div>
+          <div class="device-subtitle" id="device-subtitle">Установщик подберёт образ для выбранной платы и PS4</div>
+        </div>
+      </div>
+
+      <div id="installer-host"></div>
+      <div class="compatibility">Chrome · Edge · Компьютер с USB</div>
+
+      <div class="note">
+        <strong>Проверьте объём flash перед прошивкой.</strong> Сборки C3, S2 и ESP8266 рассчитаны на платы с 4 MB flash. ESP8266 подключается к компьютеру через USB-UART адаптер, если он не встроен в плату.
+      </div>
+      <p class="compatibility">Если плата не подключится к Wi-Fi автоматически, подключитесь к сети <strong>ps4hen</strong> с паролем <strong>88880000</strong> и откройте <strong>http://192.168.4.1</strong>.</p>
+
+      <div class="steps">
+        <div class="step"><div class="step-number">01</div><div class="step-title">Выберите версии</div><div class="step-text">Укажите точную модель платы и прошивку PS4.</div></div>
+        <div class="step"><div class="step-number">02</div><div class="step-title">Подключите и прошейте</div><div class="step-text">Нажмите кнопку и выберите последовательный порт платы.</div></div>
+        <div class="step"><div class="step-number">03</div><div class="step-title">Откройте хост</div><div class="step-text">Подключитесь к Wi-Fi PS4HEN и откройте адрес ESP в браузере консоли.</div></div>
+      </div>
+    </section>
+    <footer>PS4HEN · Web Flasher</footer>
+  </main>
+
+  <script>
+    const versions = [
+      { version: "5.05", bundle: "fw-g2allpro" }, { version: "5.07", bundle: "fw-g2allpro" },
+      ...["6.70", "6.71", "6.72", "7.00", "7.01", "7.02", "7.50", "7.51", "7.55", "8.00", "8.01", "8.03", "8.50", "8.52", "9.00", "9.03", "9.04", "9.50", "9.51", "9.60"].map(version => ({ version, bundle: "fw-670-960" })),
+      ...["10.00", "10.01", "10.50", "10.70", "10.71", "10.72", "11.00", "11.02", "11.50", "11.51", "11.52", "12.00", "12.02", "12.50", "12.52", "12.70", "12.71", "13.00"].map(version => ({ version, bundle: "fw-g2allpro" })),
+      ...["13.02", "13.50", "13.52"].map(version => ({ version, bundle: "fw-1302-1352" }))
+    ];
+    const firmwareSelect = document.getElementById("ps4-firmware");
+    versions.forEach(({ version }) => {
+      const option = document.createElement("option");
+      option.value = version;
+      option.textContent = `PS4 ${version}`;
+      firmwareSelect.appendChild(option);
+    });
+
+    const boardSelect = document.getElementById("board");
+    const installHost = document.getElementById("installer-host");
+    const boardTitle = document.getElementById("device-title");
+    const boardSubtitle = document.getElementById("device-subtitle");
+
+    async function updateInstaller() {
+      const board = boardSelect.value;
+      const version = versions.find(item => item.version === firmwareSelect.value);
+      installHost.replaceChildren();
+      if (!board || !version) {
+        boardTitle.textContent = board ? boardSelect.options[boardSelect.selectedIndex].textContent : "Выберите плату";
+        boardSubtitle.textContent = "Установщик подберёт образ для выбранной платы и PS4";
+        return;
+      }
+
+      const manifest = board === "esp32-s3"
+        ? "manifests/esp32-s3-full.json"
+        : `manifests/${board}-${version.bundle}.json`;
+      boardTitle.textContent = boardSelect.options[boardSelect.selectedIndex].textContent;
+      boardSubtitle.textContent = `PS4 FW ${version.version} · выбран подходящий набор WebKit`;
+
+      if (location.protocol === "file:") {
+        boardSubtitle.textContent = "Откройте опубликованный установщик через HTTP/HTTPS. При запуске index.html с диска браузер не может загрузить манифест.";
+        return;
+      }
+
+      const status = document.createElement("p");
+      status.className = "compatibility";
+      status.textContent = "Проверяю наличие сборки для выбранной платы и прошивки…";
+      installHost.appendChild(status);
+
+      try {
+        const response = await fetch(manifest, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const manifestData = await response.json();
+        if (!Array.isArray(manifestData.builds?.[0]?.parts) || manifestData.builds[0].parts.length === 0) throw new Error("В манифесте нет частей прошивки");
+      } catch (error) {
+        boardSubtitle.textContent = "Сборка для выбранной платы ещё не опубликована.";
+        status.textContent = "Не удалось загрузить манифест. Убедитесь, что открыт опубликованный сайт и завершилась сборка GitHub Actions. Для локального запуска сначала выполните сборку прошивок и манифестов.";
+        return;
+      }
+
+      installHost.replaceChildren();
+
+      const installButton = document.createElement("esp-web-install-button");
+      installButton.setAttribute("manifest", manifest);
+      installButton.innerHTML = '<button slot="activate">⚡ Подключить и прошить</button>';
+      installHost.appendChild(installButton);
+    }
+
+    boardSelect.addEventListener("change", updateInstaller);
+    firmwareSelect.addEventListener("change", updateInstaller);
+  </script>
+</body>
 </html>
