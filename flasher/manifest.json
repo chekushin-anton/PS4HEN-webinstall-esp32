@@ -1,5 +1,5 @@
 {
-  "name": "PS4 HEN — ESP32-S3",
+  "name": "ESP32-S3 Web Server",
   "version": "1.0.0",
   "new_install_prompt_erase": true,
   "builds": [

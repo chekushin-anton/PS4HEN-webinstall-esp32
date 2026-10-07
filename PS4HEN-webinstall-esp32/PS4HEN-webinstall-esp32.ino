@@ -1,14 +1,7 @@
-#if defined(ESP8266)
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-#include <LittleFS.h>
-using HttpServer = ESP8266WebServer;
-#else
 #include <WiFi.h>
 #include <WebServer.h>
 #include <LittleFS.h>
-using HttpServer = WebServer;
-#endif
+#include <SPIFFS.h>
 
 const char *WIFI_SSID = "ps4hen";
 const char *WIFI_PASSWORD = "88880000";
@@ -16,35 +9,57 @@ const char *AP_SSID = "ps4hen";
 const char *AP_PASSWORD = "88880000";
 const uint32_t WIFI_CONNECT_TIMEOUT_MS = 15000;
 
-HttpServer server(80);
+WebServer server(80);
 bool accessPointMode = false;
+const char *activeFS = "";
 
-bool mountLittleFS(bool formatOnFailure) {
-#if defined(ESP8266)
-  if (LittleFS.begin()) return true;
-  if (!formatOnFailure || !LittleFS.format()) return false;
-  return LittleFS.begin();
-#else
-  return LittleFS.begin(formatOnFailure);
-#endif
+bool fsBegin() {
+  if (LittleFS.begin(false)) {
+    activeFS = "littlefs";
+    Serial.println("[FS] LittleFS mounted");
+    return true;
+  }
+  Serial.println("[FS] LittleFS not found");
+
+  if (SPIFFS.begin(false)) {
+    activeFS = "spiffs";
+    Serial.println("[FS] SPIFFS mounted");
+    return true;
+  }
+  Serial.println("[FS] SPIFFS not found");
+
+  Serial.println("[FS] Formatting as LittleFS...");
+  if (LittleFS.begin(true)) {
+    activeFS = "littlefs";
+    Serial.println("[FS] LittleFS formatted and mounted");
+    return true;
+  }
+  Serial.println("[FS] ERROR: cannot mount or format");
+  return false;
 }
 
-uint32_t littleFSTotalBytes() {
-#if defined(ESP8266)
-  FSInfo info;
-  return LittleFS.info(info) ? info.totalBytes : 0;
-#else
-  return LittleFS.totalBytes();
-#endif
+bool fsExists(const String &path) {
+  if (strcmp(activeFS, "littlefs") == 0) return LittleFS.exists(path);
+  if (strcmp(activeFS, "spiffs")   == 0) return SPIFFS.exists(path);
+  return false;
 }
 
-uint32_t littleFSUsedBytes() {
-#if defined(ESP8266)
-  FSInfo info;
-  return LittleFS.info(info) ? info.usedBytes : 0;
-#else
-  return LittleFS.usedBytes();
-#endif
+File fsOpen(const String &path, const char *mode) {
+  if (strcmp(activeFS, "littlefs") == 0) return LittleFS.open(path, mode);
+  if (strcmp(activeFS, "spiffs")   == 0) return SPIFFS.open(path, mode);
+  return File();
+}
+
+size_t fsTotal() {
+  if (strcmp(activeFS, "littlefs") == 0) return LittleFS.totalBytes();
+  if (strcmp(activeFS, "spiffs")   == 0) return SPIFFS.totalBytes();
+  return 0;
+}
+
+size_t fsUsed() {
+  if (strcmp(activeFS, "littlefs") == 0) return LittleFS.usedBytes();
+  if (strcmp(activeFS, "spiffs")   == 0) return SPIFFS.usedBytes();
+  return 0;
 }
 
 const char *contentTypeFor(const String &path) {
@@ -52,7 +67,6 @@ const char *contentTypeFor(const String &path) {
   if (path.endsWith(".css")) return "text/css; charset=utf-8";
   if (path.endsWith(".js"))  return "application/javascript; charset=utf-8";
   if (path.endsWith(".json")) return "application/json; charset=utf-8";
-  if (path.endsWith(".manifest")) return "text/cache-manifest; charset=utf-8";
   if (path.endsWith(".svg")) return "image/svg+xml";
   if (path.endsWith(".png")) return "image/png";
   if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
@@ -83,9 +97,9 @@ bool sendFileFromFS(const String &requestedPath) {
   String path = requestedPath;
   if (path == "/") path = "/index.html";
   if (!path.startsWith("/") || path.indexOf("..") >= 0) return false;
-  if (!LittleFS.exists(path)) return false;
+  if (!fsExists(path)) return false;
 
-  File file = LittleFS.open(path, "r");
+  File file = fsOpen(path, "r");
   if (!file || file.isDirectory()) return false;
 
   server.sendHeader("Cache-Control", "no-cache");
@@ -99,11 +113,38 @@ void handleStatus() {
   String json = "{\"mode\":\"";
   json += accessPointMode ? "AP" : "STA";
   json += "\",\"ip\":\"" + ip.toString() + "\"";
-  json += ",\"fs_total\":" + String(littleFSTotalBytes());
-  json += ",\"fs_used\":" + String(littleFSUsedBytes());
+  json += ",\"fs\":\"" + String(activeFS) + "\"";
+  json += ",\"fs_total\":" + String(fsTotal());
+  json += ",\"fs_used\":" + String(fsUsed());
   json += ",\"free_heap\":" + String(ESP.getFreeHeap());
   json += "}";
   sendJson(200, json);
+}
+
+void handleDebug() {
+  String out = "Active FS: " + String(activeFS) + "\n\n";
+  out += "Files:\n";
+
+  File root;
+  if (strcmp(activeFS, "littlefs") == 0) root = LittleFS.open("/");
+  else if (strcmp(activeFS, "spiffs") == 0) root = SPIFFS.open("/");
+
+  if (!root || !root.isDirectory()) {
+    out += "(cannot open root)\n";
+  } else {
+    File f = root.openNextFile();
+    int count = 0;
+    while (f) {
+      out += "  " + String(f.name()) + " (" + String(f.size()) + " bytes)\n";
+      f = root.openNextFile();
+      count++;
+    }
+    if (count == 0) out += "(empty)\n";
+  }
+
+  out += "\nTotal: " + String(fsTotal()) + " bytes\n";
+  out += "Used:  " + String(fsUsed()) + " bytes\n";
+  server.send(200, "text/plain; charset=utf-8", out);
 }
 
 void connectToWiFi() {
@@ -144,6 +185,7 @@ void setupRoutes() {
     addCorsHeaders();
     server.send(204);
   });
+  server.on("/debug", HTTP_GET, handleDebug);
 
   server.onNotFound([]() {
     if (server.uri().startsWith("/api/")) {
@@ -159,21 +201,18 @@ void setupRoutes() {
 void setup() {
   Serial.begin(115200);
   delay(500);
-  Serial.println("\nPS4 HEN Web Server starting...");
+  Serial.println("\nESP32-S3 Universal FS Web Server starting...");
 
-  if (!mountLittleFS(false)) {
-    Serial.println("WARNING: LittleFS not mounted. Formatting...");
-    if (!mountLittleFS(true)) {
-      Serial.println("ERROR: LittleFS mount failed");
-    }
-  }
-  Serial.printf("LittleFS: %u / %u bytes used\n",
-                (unsigned)littleFSUsedBytes(), (unsigned)littleFSTotalBytes());
+  fsBegin();
+
+  Serial.printf("Active FS: %s | Used: %u / %u bytes\n",
+                activeFS, (unsigned)fsUsed(), (unsigned)fsTotal());
 
   connectToWiFi();
   setupRoutes();
   server.begin();
   Serial.println("HTTP server started on port 80");
+  Serial.println("Debug: http://<ip>/debug");
 }
 
 void loop() {

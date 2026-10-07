@@ -74,12 +74,6 @@
     var isPS4 = match !== null;
     var fwVersion = isPS4 ? match[1] : "Unknown";
     var fwNum = parseFloat(fwVersion);
-    // Replaced by the image builder for small-flash board variants.
-    // null means that the filesystem contains all exploit bundles.
-    var BUILD_FW_RANGES = null;
-    var firmwareInBuild = !BUILD_FW_RANGES || BUILD_FW_RANGES.some(function(range) {
-        return fwNum >= range.min && fwNum <= range.max;
-    });
     function onScriptError() {
         appendLog("Данные не найдены! — Очистите данные браузера и переустановите кэш ...", "error");
     }
@@ -87,21 +81,17 @@
         document.addEventListener("DOMContentLoaded", () => {
             appendLog("Только для PS4 с поддерживаемой прошивкой 5.05–13.52", "error");
         });
-    } else if (!firmwareInBuild) {
-        document.addEventListener("DOMContentLoaded", () => {
-            appendLog("В этой сборке нет WebKit для прошивки PS4 " + fwVersion, "error");
-        });
     } else {
         if (window.applicationCache.status == '0') {
             if (fwNum >= 5.05 && fwNum <= 5.07) {
                 appendLog("Установка кэша для FW " + fwVersion + "...", "info");
                 setTimeout(function() { window.location.replace("cache_g2allpro.html"); }, 500);
-            } else if (fwNum >= 6.70 && fwNum < 6.72) {
+            } else if (fwNum >= 6.00 && fwNum < 6.72) {
                 appendLog("Установка кэша для FW " + fwVersion + "...", "info");
                 setTimeout(function() { window.location.replace("cache_psfree.html"); }, 500);
             } else if (fwNum >= 6.72 && fwNum <= 6.72) {
                 appendLog("Установка кэша для FW " + fwVersion + "...", "info");
-                setTimeout(function() { window.location.replace("cache_psfree.html"); }, 500);
+                setTimeout(function() { window.location.replace("cache672.html"); }, 500);
             } else if (fwNum >= 7.00 && fwNum <= 9.60) {
                 appendLog("Установка кэша для FW " + fwVersion + "...", "info");
                 setTimeout(function() { window.location.replace("cache_psfree.html"); }, 500);
@@ -127,7 +117,27 @@
                     if (e.data && e.data.type === 'statusG2') { appendLog(e.data.msg); }
                 });
             }
-            else if (fwNum >= 6.70 && fwNum <= 9.60) {
+            else if (fwNum >= 6.00 && fwNum < 6.72) {
+                appendLog("Запуск эксплойта для FW " + fwVersion + "...", "info");
+                var framePSFree1 = document.createElement('iframe');
+                framePSFree1.src = "psfree/index.html";
+                framePSFree1.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;";
+                document.body.appendChild(framePSFree1);
+                window.addEventListener('message', function(e) {
+                    if (e.data && e.data.type === 'statusPSFree') { appendLog(e.data.msg); }
+                });
+            }
+            else if (fwNum >= 6.72 && fwNum <= 6.72) {
+                appendLog("Запуск эксплойта для FW " + fwVersion + "...", "info");
+                var frame672 = document.createElement('iframe');
+                frame672.src = "672/index.html";
+                frame672.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;";
+                document.body.appendChild(frame672);
+                window.addEventListener('message', function(e) {
+                    if (e.data && e.data.type === 'status672') { appendLog(e.data.msg); }
+                });
+            }
+            else if (fwNum >= 7.00 && fwNum <= 9.60) {
                 appendLog("Запуск эксплойта для FW " + fwVersion + "...", "info");
                 var framePSFree2 = document.createElement('iframe');
                 framePSFree2.src = "psfree/index.html";

@@ -1,4 +1,4 @@
-name: Build and publish PS4HEN web installer
+name: Build ESP32-S3 Firmware
 
 on:
   push:
@@ -9,43 +9,84 @@ permissions:
   contents: write
 
 jobs:
-  build-and-publish:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: Install Arduino CLI
+      - name: Install arduino-cli
         run: |
           mkdir -p "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
           curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR="$HOME/.local/bin" sh
 
-      - name: Install ESP32 and ESP8266 cores
+      - name: Install ESP32 core
         run: |
           arduino-cli config init --overwrite
           arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
-          arduino-cli config add board_manager.additional_urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
           arduino-cli core update-index
-          arduino-cli core install esp32:esp32 esp8266:esp8266
+          arduino-cli core install esp32:esp32
 
-      - name: Build board firmware and PS4 firmware variants
-        run: python tools/build_firmware.py
-
-      - name: Prepare GitHub Pages files
+      - name: Find sketch folder
+        id: find_sketch
         run: |
-          mkdir -p site-dist
-          cp -a flasher/. site-dist/
+          set -e
+          SKETCH=""
+          for d in */; do
+            d="${d%/}"
+            if ls "$d"/*.ino >/dev/null 2>&1; then
+              SKETCH="$d"
+              break
+            fi
+          done
+          if [ -z "$SKETCH" ]; then
+            echo "ERROR: sketch folder with .ino not found"
+            exit 1
+          fi
+          echo "Found sketch folder: $SKETCH"
+          echo "SKETCH=$SKETCH" >> $GITHUB_OUTPUT
 
-      - name: Publish web flasher to GitHub Pages
+      - name: Build firmware
+        run: |
+          set -e
+          SKETCH="${{ steps.find_sketch.outputs.SKETCH }}"
+          echo "Using SKETCH=$SKETCH"
+
+          mkdir -p flasher/firmware
+
+          MKLS=$(find ~/.arduino15 -type f -name "mklittlefs*" 2>/dev/null | head -n 1)
+          echo "Found mklittlefs: $MKLS"
+          chmod +x "$MKLS"
+
+          cat > "$SKETCH/partitions.csv" <<'EOF'
+          # Name,   Type, SubType, Offset,  Size, Flags
+          nvs,      data, nvs,     0x9000,  0x5000,
+          otadata,  data, ota,     0xe000,  0x2000,
+          app0,     app,  ota_0,   0x10000, 0x200000,
+          app1,     app,  ota_1,   0x210000,0x200000,
+          spiffs,   data, spiffs,  0x410000,0xBE0000,
+          coredump, data, coredump,0xFF0000,0x10000,
+          EOF
+
+          arduino-cli compile \
+            --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default \
+            --output-dir ./build "$SKETCH"
+
+          cp build/*.bootloader.bin flasher/firmware/bootloader.bin
+          cp build/*.partitions.bin flasher/firmware/partitions.bin
+          cp build/*.ino.bin        flasher/firmware/firmware.bin
+          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
+
+          "$MKLS" -c "$SKETCH/data" -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs.bin
+
+          echo "=== flasher/firmware ==="
+          ls -la flasher/firmware
+
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site-dist
+          publish_dir: ./flasher
           publish_branch: gh-pages
           force_orphan: true
