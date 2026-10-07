@@ -3,16 +3,458 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32-S3 Installer</title>
-  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
-  ...
+  <meta name="theme-color" content="#070a10">
+  <meta name="description" content="Установка WebKit для PS4 HEN через ESP32-S3">
+  <title>PS4 HEN • ESP32 WebKit Installer</title>
+
+  <script type="module"
+    src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070a10;
+      --panel: rgba(18, 24, 36, .84);
+      --panel2: rgba(25, 32, 47, .72);
+      --border: rgba(255,255,255,.09);
+      --text: #f4f7fb;
+      --muted: #9ca8ba;
+      --blue: #62a8ff;
+      --purple: #9177ff;
+      --green: #53d89a;
+      --yellow: #ffca62;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont,
+                   "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(98,168,255,.18), transparent 30%),
+        radial-gradient(circle at 90% 8%, rgba(145,119,255,.16), transparent 28%),
+        linear-gradient(180deg, #0a0e16 0%, var(--bg) 55%, #05070b 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .2;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(to bottom, black, transparent 85%);
+    }
+
+    .wrap {
+      width: min(980px, calc(100% - 32px));
+      margin: auto;
+      padding: 48px 0 60px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 13px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,.045);
+      color: #c9d8ed;
+      font-size: 13px;
+      font-weight: 700;
+      backdrop-filter: blur(12px);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 14px rgba(83,216,154,.7);
+    }
+
+    h1 {
+      margin: 18px 0 10px;
+      font-size: clamp(36px, 6vw, 58px);
+      line-height: 1;
+      letter-spacing: -.045em;
+    }
+
+    .gradient {
+      background: linear-gradient(90deg, #fff 5%, #8fc4ff 48%, #a68cff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .lead {
+      max-width: 690px;
+      margin: auto;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 30px;
+      border: 1px solid var(--border);
+      border-radius: 23px;
+      background: linear-gradient(145deg, rgba(22,29,43,.92), rgba(11,15,24,.88));
+      box-shadow: 0 24px 70px rgba(0,0,0,.38);
+      backdrop-filter: blur(18px);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      color: #8fbfff;
+      text-transform: uppercase;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 26px;
+      letter-spacing: -.025em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .install {
+      padding: 22px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.045);
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .install-label {
+      color: #c7d1df;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    esp-web-install-button {
+      display: block;
+    }
+
+    esp-web-install-button button {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 16px 20px;
+      color: #06101e;
+      background: linear-gradient(135deg, #8fc4ff, #9c88ff);
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 12px 30px rgba(98,168,255,.22);
+      transition: .18s ease;
+    }
+
+    esp-web-install-button button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.06);
+      box-shadow: 0 16px 36px rgba(98,168,255,.3);
+    }
+
+    esp-web-install-button button:active {
+      transform: translateY(1px);
+    }
+
+    .browser-note {
+      margin-top: 11px;
+      color: #7f8da1;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .section-title {
+      margin: 38px 0 15px;
+      font-size: 19px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: 20px;
+      box-shadow: 0 12px 35px rgba(0,0,0,.17);
+    }
+
+    .num {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      margin-bottom: 14px;
+      border-radius: 10px;
+      background: rgba(98,168,255,.12);
+      border: 1px solid rgba(98,168,255,.2);
+      color: #9ecbff;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .warning {
+      margin-top: 14px;
+      display: flex;
+      gap: 13px;
+      padding: 18px;
+      border: 1px solid rgba(255,202,98,.16);
+      border-radius: 18px;
+      background: rgba(255,202,98,.055);
+    }
+
+    .warning-icon {
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      background: rgba(255,202,98,.1);
+      color: var(--yellow);
+      font-weight: 900;
+    }
+
+    .warning strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .warning span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .info {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .info-item {
+      padding: 17px 18px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--panel2);
+    }
+
+    .info-item b {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+
+    .info-item span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    footer {
+      text-align: center;
+      padding-top: 32px;
+      color: #687588;
+      font-size: 12px;
+    }
+
+    @media (max-width: 760px) {
+      .wrap { width: min(100% - 20px, 620px); padding-top: 28px; }
+      .hero { padding: 20px; }
+      .hero-grid { grid-template-columns: 1fr; }
+      .steps, .info { grid-template-columns: 1fr; }
+      h1 { font-size: 40px; }
+    }
+  </style>
 </head>
+
 <body>
-  <h1>ESP32-S3 Installer</h1>
-  ...
-  <esp-web-install-button manifest="manifest.json">
-    <button slot="activate">Подключить и прошить</button>
-    ...
-  </esp-web-install-button>
+  <main class="wrap">
+
+    <header>
+      <div class="badge">
+        <span class="dot"></span>
+        ESP32 Web Installer
+      </div>
+
+      <h1>
+        <span class="gradient">PS4 HEN WebKit</span>
+      </h1>
+
+      <p class="lead">
+        Прошивка ESP32-S3 для использования устройства
+        как локального WebKit-сервера для запуска PS4 HEN.
+      </p>
+    </header>
+
+    <section class="hero">
+      <div class="hero-grid">
+
+        <div>
+          <div class="eyebrow">Firmware Installer</div>
+
+          <h2>Установите прошивку на ESP32-S3</h2>
+
+          <p>
+            Подключите плату к компьютеру по USB и запустите установку.
+            Прошивка выполняется прямо из браузера — отдельная программа
+            для записи firmware не требуется.
+          </p>
+        </div>
+
+        <div class="install">
+          <div class="install-label">
+            ESP32-S3 готов к установке
+          </div>
+
+          <esp-web-install-button manifest="manifest.json">
+            <button slot="activate">
+              Подключить и прошить
+            </button>
+          </esp-web-install-button>
+
+          <div class="browser-note">
+            Используйте Chrome или Edge на компьютере.
+            При запросе выберите USB-порт вашей ESP32-S3.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <h2 class="section-title">Как прошить</h2>
+
+    <section class="steps">
+
+      <article class="card">
+        <div class="num">01</div>
+        <h3>Подключите ESP32</h3>
+        <p>
+          Подсоедините ESP32-S3 к компьютеру качественным
+          USB-кабелем с передачей данных.
+        </p>
+      </article>
+
+      <article class="card">
+        <div class="num">02</div>
+        <h3>Запустите установку</h3>
+        <p>
+          Нажмите «Подключить и прошить», разрешите браузеру
+          доступ к USB-порту и выберите подключённую плату.
+        </p>
+      </article>
+
+      <article class="card">
+        <div class="num">03</div>
+        <h3>Дождитесь завершения</h3>
+        <p>
+          Не отключайте ESP32 во время записи. После окончания
+          прошивки перезапустите плату.
+        </p>
+      </article>
+
+    </section>
+
+    <div class="warning">
+      <div class="warning-icon">!</div>
+
+      <div>
+        <strong>Важно</strong>
+
+        <span>
+          Не отключайте USB-кабель и не закрывайте страницу во время
+          прошивки. Если плата не определяется, попробуйте другой
+          USB-порт или кабель с поддержкой передачи данных.
+        </span>
+      </div>
+    </div>
+
+    <h2 class="section-title">Перед началом</h2>
+
+    <section class="info">
+
+      <div class="info-item">
+        <b>Плата</b>
+        <span>
+          ESP32-S3, совместимая с firmware из manifest.json.
+        </span>
+      </div>
+
+      <div class="info-item">
+        <b>Браузер</b>
+        <span>
+          Актуальная версия Google Chrome или Microsoft Edge.
+        </span>
+      </div>
+
+      <div class="info-item">
+        <b>USB-подключение</b>
+        <span>
+          Кабель должен поддерживать передачу данных, а не только зарядку.
+        </span>
+      </div>
+
+      <div class="info-item">
+        <b>Назначение</b>
+        <span>
+          После прошивки ESP32 используется как WebKit-сервер для PS4 HEN.
+        </span>
+      </div>
+
+    </section>
+
+    <footer>
+      PS4 HEN • ESP32 WebKit Installer
+    </footer>
+
+  </main>
 </body>
 </html>
