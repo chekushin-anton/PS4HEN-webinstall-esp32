@@ -4,6 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PS4HEN — веб-установщик</title>
+  <script>
+    // The repository only contains source files. Generated manifests and
+    // firmware are published by GitHub Actions to GitHub Pages.
+    if (location.protocol === "file:") {
+      location.replace("https://chekushin-anton.github.io/PS4HEN-webinstall-esp32/");
+    }
+  </script>
   <style>
     :root {
       --bg: #0b0f17;
@@ -176,11 +183,6 @@
         : `manifests/${board}-${version.bundle}.json`;
       boardTitle.textContent = boardSelect.options[boardSelect.selectedIndex].textContent;
       boardSubtitle.textContent = `PS4 FW ${version.version} · выбран подходящий набор WebKit`;
-
-      if (location.protocol === "file:") {
-        boardSubtitle.textContent = "Откройте опубликованный установщик через HTTP/HTTPS. При запуске index.html с диска браузер не может загрузить манифест.";
-        return;
-      }
 
       const status = document.createElement("p");
       status.className = "compatibility";
