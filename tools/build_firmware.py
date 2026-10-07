@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -141,7 +142,10 @@ def appcache_paths(bundle: str, stage: Path) -> None:
         entry = line.strip()
         if not entry or entry.startswith("#") or entry in {"CACHE MANIFEST", "CACHE:", "NETWORK:", "FALLBACK:", "*"}:
             continue
-        source = (manifest.parent / entry).resolve()
+        # AppCache permits query parameters (for example `1352/jb.js?v=19`).
+        # They belong to the URL and must not be treated as a filename suffix.
+        asset_path = urlsplit(entry).path
+        source = (manifest.parent / asset_path).resolve()
         if not source.is_file():
             raise FileNotFoundError(f"AppCache entry {entry!r} in {manifest} is missing")
         relative = source.relative_to(DATA_SOURCE.resolve()).as_posix()
