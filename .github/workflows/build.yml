@@ -23,10 +23,23 @@ jobs:
 
       - name: Install ESP32 core
         run: |
+          set -e
           arduino-cli config init --overwrite
           arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core update-index
-          arduino-cli core install esp32:esp32
+
+          for attempt in 1 2 3; do
+            echo "=== Attempt $attempt to install ESP32 core ==="
+            if arduino-cli core install esp32:esp32; then
+              echo "=== Success on attempt $attempt ==="
+              exit 0
+            fi
+            echo "=== Attempt $attempt failed, retrying in 10s... ==="
+            sleep 10
+          done
+
+          echo "=== ERROR: failed to install ESP32 core after 3 attempts ==="
+          exit 1
 
       - name: Find sketch folder
         id: find_sketch
