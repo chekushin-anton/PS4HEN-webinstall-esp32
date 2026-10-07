@@ -222,7 +222,7 @@ def build() -> None:
 
     for board, chip, fqbn in (
         ("esp32-c3", "ESP32-C3", "esp32:esp32:esp32c3:FlashSize=4M,PartitionScheme=custom,CDCOnBoot=cdc"),
-        ("esp32-s2", "ESP32-S2", "esp32:esp32:esp32s2:FlashSize=4M,PartitionScheme=custom,USBMode=hwcdc,CDCOnBoot=cdc"),
+        ("esp32-s2", "ESP32-S2", "esp32:esp32:esp32s2:FlashSize=4M,PartitionScheme=custom"),
     ):
         outputs = copy_to_board_dir(compile_sketch(fqbn, ESP32_PARTITION_4M), board)
         if outputs["firmware"].stat().st_size > 0x180000:
