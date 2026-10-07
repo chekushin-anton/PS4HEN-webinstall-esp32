@@ -3,6 +3,9 @@ name: Build ESP32-S3 Firmware
 on:
   push:
     branches: [main]
+    # Не перезапускать workflow, когда он сам коммитит бинарники в docs/
+    paths-ignore:
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -27,19 +30,11 @@ jobs:
           arduino-cli config init --overwrite
           arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core update-index
-
           for attempt in 1 2 3; do
-            echo "=== Attempt $attempt to install ESP32 core ==="
-            if arduino-cli core install esp32:esp32; then
-              echo "=== Success on attempt $attempt ==="
-              exit 0
-            fi
-            echo "=== Attempt $attempt failed, retrying in 10s... ==="
-            sleep 10
+            echo "=== Attempt $attempt ==="
+            if arduino-cli core install esp32:esp32; then break; fi
+            echo "Retry in 10s..."; sleep 10
           done
-
-          echo "=== ERROR: failed to install ESP32 core after 3 attempts ==="
-          exit 1
 
       - name: Find sketch folder
         id: find_sketch
@@ -66,7 +61,7 @@ jobs:
           SKETCH="${{ steps.find_sketch.outputs.SKETCH }}"
           echo "Using SKETCH=$SKETCH"
 
-          mkdir -p flasher/firmware
+          mkdir -p docs/firmware
 
           MKLS=$(find ~/.arduino15 -type f -name "mklittlefs*" 2>/dev/null | head -n 1)
           echo "Found mklittlefs: $MKLS"
@@ -86,20 +81,19 @@ jobs:
             --fqbn esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=custom,CDCOnBoot=default \
             --output-dir ./build "$SKETCH"
 
-          cp build/*.bootloader.bin flasher/firmware/bootloader.bin
-          cp build/*.partitions.bin flasher/firmware/partitions.bin
-          cp build/*.ino.bin        flasher/firmware/firmware.bin
-          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} flasher/firmware/ \;
+          cp build/*.bootloader.bin docs/firmware/bootloader.bin
+          cp build/*.partitions.bin docs/firmware/partitions.bin
+          cp build/*.ino.bin        docs/firmware/firmware.bin
+          find ~/.arduino15 -name "boot_app0.bin" -exec cp {} docs/firmware/ \;
 
-          "$MKLS" -c "$SKETCH/data" -s 0xBE0000 -p 256 -b 4096 flasher/firmware/spiffs.bin
+          "$MKLS" -c "$SKETCH/data" -s 0xBE0000 -p 256 -b 4096 docs/firmware/spiffs.bin
 
-          echo "=== flasher/firmware ==="
-          ls -la flasher/firmware
+          echo "=== docs/firmware ==="
+          ls -la docs/firmware
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Commit firmware to main
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./flasher
-          publish_branch: gh-pages
-          force_orphan: true
+          commit_message: "Auto-build firmware [skip ci]"
+          file_pattern: 'docs/firmware/*.bin'
+          branch: main
