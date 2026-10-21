@@ -9,7 +9,7 @@ on:
       - ".github/workflows/windows-installer.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-windows:
@@ -47,7 +47,7 @@ jobs:
       - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pyinstaller esptool pyserial
+          python -m pip install pyinstaller esptool==4.8.1 pyserial
 
       - name: Build EXE
         shell: pwsh
@@ -90,3 +90,41 @@ jobs:
             PS4HEN_ESP32S3_Standalone.zip
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0
+          name: PS4HEN ESP32-S3 Installer v0.1.0
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            dist/PS4HEN_ESP32S3_Installer.exe
+            PS4HEN_ESP32S3_Standalone.zip
+          body: |
+            ## PS4HEN ESP32-S3 Installer v0.1.0
+
+            Автономный установщик для записи подготовленной прошивки из этого репозитория на плату ESP32-S3 с Flash 16 МБ.
+
+            ### Возможности
+            - Прошивка через USB без Arduino IDE и без подключения к интернету во время установки.
+            - Выбор COM-порта из списка обнаруженных устройств.
+            - Запись комплекта бинарных файлов, включённых в EXE.
+            - Журнал процесса и сообщения об ошибках.
+
+            ### Инструкция
+            1. Скачайте `PS4HEN_ESP32S3_Installer.exe` и запустите его в Windows.
+            2. Подключите ESP32-S3 USB-кабелем с поддержкой передачи данных.
+            3. Выберите COM-порт платы. Если порт не появился, нажмите «Обновить».
+            4. Нажмите «Прошить ESP32-S3» и подтвердите предупреждение.
+            5. Дождитесь сообщения об успешном завершении. Не отключайте USB во время прошивки.
+            6. Если подключение не начинается, проверьте USB-кабель, драйвер USB-UART и попробуйте перевести плату в режим загрузки (удерживайте BOOT, кратко нажмите RESET, затем отпустите BOOT).
+
+            ### Важно
+            - Предназначен только для ESP32-S3 с Flash 16 МБ и разметкой, соответствующей файлам этой сборки.
+            - Прошивка заменяет содержимое flash-памяти и может удалить существующие данные.
+            - Не используйте на ESP32, ESP32-C3 или платах с другим размером Flash.
+            - Успешная запись проверена на плате автора; совместимость с другими вариантами плат не гарантируется.
+            - ZIP включает EXE, README и SHA-256 для проверки целостности.
