@@ -1,0 +1,92 @@
+name: Build standalone Windows ESP32-S3 installer
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "windows-installer/**"
+      - "docs/firmware/**"
+      - ".github/workflows/windows-installer.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check firmware files
+        shell: pwsh
+        run: |
+          $required = @(
+            "docs/firmware/bootloader.bin",
+            "docs/firmware/partitions.bin",
+            "docs/firmware/boot_app0.bin",
+            "docs/firmware/firmware.bin",
+            "docs/firmware/spiffs.bin"
+          )
+          foreach ($file in $required) {
+            if (!(Test-Path $file)) { throw "Required firmware file missing: $file" }
+          }
+
+      - name: Prepare bundled firmware
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force windows-installer/firmware | Out-Null
+          Copy-Item docs/firmware/*.bin windows-installer/firmware/
+          Get-ChildItem windows-installer/firmware
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller esptool pyserial
+
+      - name: Build EXE
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm --clean --onefile --windowed --name PS4HEN_ESP32S3_Installer --collect-all esptool --collect-all serial --add-data "windows-installer/firmware;firmware" windows-installer/installer.py
+          if (!(Test-Path "dist/PS4HEN_ESP32S3_Installer.exe")) {
+            throw "PyInstaller did not produce the EXE"
+          }
+
+      - name: Package release bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Copy-Item dist/PS4HEN_ESP32S3_Installer.exe release/
+          @"
+          PS4HEN ESP32-S3 Standalone Installer
+
+          1. Connect your ESP32-S3 board to the PC using a USB data cable.
+          2. Run PS4HEN_ESP32S3_Installer.exe.
+          3. Select the board's COM port and click "Прошить ESP32-S3".
+          4. Confirm that flash contents will be overwritten and wait for completion.
+
+          The firmware files are bundled inside the EXE. An internet connection and Arduino IDE
+          are not required at installation time. The build itself downloads standard Python
+          build dependencies and uses firmware files from this repository.
+
+          IMPORTANT: This build targets ESP32-S3 with 16 MB flash and uses the flash layout
+          defined in docs/manifest.json. Do not use it on a different chip or flash size.
+          "@ | Set-Content -Encoding UTF8 release/README.txt
+          Get-FileHash release/PS4HEN_ESP32S3_Installer.exe -Algorithm SHA256 |
+            Format-List | Out-String | Set-Content -Encoding ASCII release/SHA256.txt
+          Compress-Archive -Path release/* -DestinationPath PS4HEN_ESP32S3_Standalone.zip -Force
+
+      - name: Upload EXE and ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: PS4HEN-ESP32S3-Windows-Installer
+          path: |
+            dist/PS4HEN_ESP32S3_Installer.exe
+            PS4HEN_ESP32S3_Standalone.zip
+          if-no-files-found: error
+          retention-days: 30
