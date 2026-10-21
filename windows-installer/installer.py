@@ -23,8 +23,10 @@ def run_esptool_mode():
     # PyInstaller bundles esptool into this same executable. Re-enter it as a
     # subprocess so the GUI can display progress without blocking.
     sys.argv = ["esptool"] + sys.argv[2:]
-    from esptool.__main__ import main
-    main()
+    # esptool 4.x exposes the supported command-line entry point as _main.
+    # Pin the build to esptool 4.8.1 so the bundled CLI API remains stable.
+    from esptool import _main
+    _main()
 
 if len(sys.argv) > 1 and sys.argv[1] == "--_esptool":
     run_esptool_mode()
