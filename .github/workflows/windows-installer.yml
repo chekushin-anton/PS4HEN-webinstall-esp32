@@ -153,20 +153,22 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: windows-installer
-          path: release-assets
-          merge-multiple: true
+          path: release-assets/windows
       - name: Download macOS Apple Silicon artifacts
         uses: actions/download-artifact@v4
         with:
           name: macos-installer-AppleSilicon
-          path: release-assets
-          merge-multiple: true
+          path: release-assets/apple-silicon
       - name: Download macOS Intel artifacts
         uses: actions/download-artifact@v4
         with:
           name: macos-installer-Intel
-          path: release-assets
-          merge-multiple: true
+          path: release-assets/intel
+      - name: Flatten release assets
+        run: |
+          mkdir -p release-flat
+          find release-assets -type f -exec cp {} release-flat/ \;
+          ls -la release-flat
       - name: Publish GitHub Release v0.2.0
         uses: softprops/action-gh-release@v2
         with:
@@ -176,14 +178,14 @@ jobs:
           prerelease: false
           fail_on_unmatched_files: true
           files: |
-            release-assets/PS4HEN_ESP32S3_Installer.exe
-            release-assets/PS4HEN_ESP32S3_Windows_Standalone.zip
-            release-assets/PS4HEN_ESP32S3_macOS_AppleSilicon.zip
-            release-assets/PS4HEN_ESP32S3_macOS_AppleSilicon.dmg
-            release-assets/SHA256_AppleSilicon.txt
-            release-assets/PS4HEN_ESP32S3_macOS_Intel.zip
-            release-assets/PS4HEN_ESP32S3_macOS_Intel.dmg
-            release-assets/SHA256_Intel.txt
+            release-flat/PS4HEN_ESP32S3_Installer.exe
+            release-flat/PS4HEN_ESP32S3_Windows_Standalone.zip
+            release-flat/PS4HEN_ESP32S3_macOS_AppleSilicon.zip
+            release-flat/PS4HEN_ESP32S3_macOS_AppleSilicon.dmg
+            release-flat/SHA256_AppleSilicon.txt
+            release-flat/PS4HEN_ESP32S3_macOS_Intel.zip
+            release-flat/PS4HEN_ESP32S3_macOS_Intel.dmg
+            release-flat/SHA256_Intel.txt
           body: |
             ## PS4HEN ESP32-S3 Installer v0.2.0
 
