@@ -70,7 +70,7 @@ jobs:
           retention-days: 30
 
   build-macos:
-    name: Build macOS (\${{ matrix.arch_label }})
+    name: Build macOS (${{ matrix.arch_label }})
     strategy:
       fail-fast: false
       matrix:
@@ -81,7 +81,7 @@ jobs:
           - runner: macos-15-intel
             arch_label: Intel
             asset_suffix: Intel
-    runs-on: \${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -108,7 +108,7 @@ jobs:
           test -d "dist/PS4HEN_ESP32S3_Installer.app"
       - name: Package DMG and ZIP
         env:
-          ASSET_SUFFIX: \${{ matrix.asset_suffix }}
+          ASSET_SUFFIX: ${{ matrix.asset_suffix }}
         run: |
           mkdir -p "stage/PS4HEN ESP32-S3 Installer"
           cp -R "dist/PS4HEN_ESP32S3_Installer.app" "stage/PS4HEN ESP32-S3 Installer/"
@@ -128,19 +128,19 @@ jobs:
           This app is not signed or notarized. On first launch, macOS may show a security
           warning. Only open it if you trust the source and have verified the release.
           EOF
-          APP_ZIP="PS4HEN_ESP32S3_macOS_\${ASSET_SUFFIX}.zip"
-          DMG="PS4HEN_ESP32S3_macOS_\${ASSET_SUFFIX}.dmg"
+          APP_ZIP="PS4HEN_ESP32S3_macOS_${ASSET_SUFFIX}.zip"
+          DMG="PS4HEN_ESP32S3_macOS_${ASSET_SUFFIX}.dmg"
           ditto -c -k --sequesterRsrc --keepParent "dist/PS4HEN_ESP32S3_Installer.app" "$APP_ZIP"
           hdiutil create -volname "PS4HEN ESP32-S3 Installer" -srcfolder "stage/PS4HEN ESP32-S3 Installer" -ov -format UDZO "$DMG"
-          shasum -a 256 "$APP_ZIP" "$DMG" > "SHA256_\${ASSET_SUFFIX}.txt"
+          shasum -a 256 "$APP_ZIP" "$DMG" > "SHA256_${ASSET_SUFFIX}.txt"
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: macos-installer-\${{ matrix.asset_suffix }}
+          name: macos-installer-${{ matrix.asset_suffix }}
           path: |
-            PS4HEN_ESP32S3_macOS_\${{ matrix.asset_suffix }}.zip
-            PS4HEN_ESP32S3_macOS_\${{ matrix.asset_suffix }}.dmg
-            SHA256_\${{ matrix.asset_suffix }}.txt
+            PS4HEN_ESP32S3_macOS_${{ matrix.asset_suffix }}.zip
+            PS4HEN_ESP32S3_macOS_${{ matrix.asset_suffix }}.dmg
+            SHA256_${{ matrix.asset_suffix }}.txt
           if-no-files-found: error
           retention-days: 30
 
