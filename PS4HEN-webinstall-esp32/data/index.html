@@ -195,7 +195,7 @@
             width: 100%;
             box-sizing: border-box;
             overflow-y: auto;
-            padding: 14px 16px 0;
+            padding: 14px 16px 10px;
             margin: 8px 0;
             font-family: Consolas, "Liberation Mono", monospace;
             font-size: 0.85rem;
@@ -258,7 +258,7 @@
             <div id="log-output"></div>
         </div>
 
-        <h1 id="footer-credits" style="position: absolute; bottom: 10px; left: 0; right: 0; font-size: 13px; color: #555967; text-align: center;">
+        <h1 id="footer-credits" style="font-size: 13px; color: #555967; text-align: center; margin: 8px 0 4px; padding: 0;">
             Специально для 4PDA Sony PlayStation 4 - Взлом<br>
             Особая благодарность всем разработчикам сцены
         </h1>
@@ -387,6 +387,25 @@
             var fr = document.createElement('iframe');
             fr.src = src;
             fr.style.cssText = "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;";
+            /* slopkit chains call window.jailbreakSuccess() directly on success.
+               Install it on every load event so it is present in the sub-frame
+               that actually runs the chain (index → run_lapse / run_poops). */
+            function installJbSuccess(win) {
+                try {
+                    win.jailbreakSuccess = function() {
+                        window.postMessage({ type: msgType, msg: 'ALL DONE', cls: 'ok', final: true }, '*');
+                    };
+                } catch(e) {}
+            }
+            fr.addEventListener('load', function() {
+                installJbSuccess(fr.contentWindow);
+            });
+            /* Also propagate into nested iframes slopkit creates */
+            window.addEventListener('message', function onMsg(e) {
+                if (e.data && e.data.type === '__slopkit_frame__') {
+                    try { installJbSuccess(e.source); } catch(ex) {}
+                }
+            });
             document.body.appendChild(fr);
             window.addEventListener('message', function(e) {
                 if (e.data && e.data.type === msgType) {
@@ -394,7 +413,7 @@
                     var cls = e.data.cls || '';
                     appendLog(msg, cls);
                     if (e.data.final) {
-                        if (/ALL DONE|\bDONE\b|Kernel exploit succeeded|PSFree.*exploit.*AIO|AIO fixes applied|GoldHEN.*Loaded|Already [Jj]ailbroken|GoldHEN is Already Loaded|already open/i.test(msg)) {
+                        if (/ALL DONE|\bDONE\b|Kernel exploit succeeded|PSFree.*exploit.*AIO|AIO fixes applied|GoldHEN.*Loaded|Already [Jj]ailbroken|GoldHEN is Already Loaded|already open|PROOF-SUMMARY-FINAL[^|]*fail=0/i.test(msg)) {
                             setAnimState('ok');
                         } else {
                             setAnimState('err');
@@ -414,14 +433,16 @@
             addFrame("ran/672/index.html", "status672");
         } else if (fwNum >= 7.00 && fwNum <= 9.60) {
             addFrame("ran/psfree/index.html", "statusPSFree");
-        } else if (fwNum >= 10.00 && fwNum <= 11.02) {
+        } else if (fwNum >= 10.00 && fwNum <= 10.50) {
             addFrame("ran/g2allpro/index.html", "statusG2");
-        } else if (fwNum > 11.02 && fwNum <= 13.00) {
+        } else if (fwNum >= 11.00 && fwNum <= 11.52) {
             addFrame("ran/slopkit/index.html", "status_slopkit");
+        } else if (fwNum >= 12.00 && fwNum <= 13.00) {
+            addFrame("ran/g2allpro/index.html", "statusG2");
         } else if (fwNum >= 13.02 && fwNum <= 13.52) {
             addFrame("ran/1352/jb.html?log=1", "status1352");
         } else if (fwNum === 14.00) {
-            addFrame("ran/afterglow/index.html", "statusAfterglow");
+            addFrame("ran/mps/exploit.html?afterglow=run&mode=goldhen&trusted=1", "statusMps");
         } else {
             appendLog('Неподдерживаемая прошивка: ' + fwVersion, "error");
         }

@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 mansoor0x | 1_X @ZeroMan. Attribution notice; upstream license remains applicable. */
 export const PS4 = {
   "11.00": {
     fw_status: "state=proven step4q=90/0 reboot=0 kernel_rvas=5/5-vs-dump",
