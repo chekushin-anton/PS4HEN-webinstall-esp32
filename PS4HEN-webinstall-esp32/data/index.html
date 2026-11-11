@@ -258,7 +258,7 @@
             <div id="log-output"></div>
         </div>
 
-        <h1 id="footer-credits" style="font-size: 13px; color: #555967; text-align: center; margin: 8px 0 4px; padding: 0;">
+        <h1 id="footer-credits" style="position: absolute; bottom: 16px; left: 0; right: 0; font-size: 13px; color: #555967; text-align: center; margin: 0; padding: 0;">
             Специально для 4PDA Sony PlayStation 4 - Взлом<br>
             Особая благодарность всем разработчикам сцены
         </h1>
@@ -319,8 +319,8 @@
 
         if (state === 'cache') {
             w.className = 'zb';
-            document.getElementById('scLbl').textContent    = 'ЗАГРУЗКА КЭША';
-            document.getElementById('scStatus').textContent = 'УСТАНОВКА...';
+            document.getElementById('scLbl').textContent    = 'LOADING CACHE';
+            document.getElementById('scStatus').textContent = 'INSTALLING...';
             document.getElementById('scInfoL').textContent  = 'APPCACHE';
             animSegsStart();
         } else if (state === 'run') {
@@ -437,7 +437,9 @@
             addFrame("ran/g2allpro/index.html", "statusG2");
         } else if (fwNum >= 11.00 && fwNum <= 11.52) {
             addFrame("ran/slopkit/index.html", "status_slopkit");
-        } else if (fwNum >= 12.00 && fwNum <= 13.00) {
+        } else if (fwNum >= 12.00 && fwNum <= 12.52) {
+            addFrame("ran/rawgame4/index.html", "statusG2");
+        } else if (fwNum === 13.00) {
             addFrame("ran/g2allpro/index.html", "statusG2");
         } else if (fwNum >= 13.02 && fwNum <= 13.52) {
             addFrame("ran/1352/jb.html?log=1", "status1352");
