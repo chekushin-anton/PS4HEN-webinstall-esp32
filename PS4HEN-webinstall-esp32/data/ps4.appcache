@@ -1,18 +1,32 @@
 CACHE MANIFEST
 # PS4 WebKit Exploit Host - единый манифест всех цепочек
-# v4
+# v29h
 
 CACHE:
 index.html
 style.css
-ran/index.html
 ran/goldhen.bin
 
 # 672 (FW 6.72)
 ran/672/index.html
 ran/672/pl_loader.js
 
-# slopkit (FW 11.00-13.00)
+# cssfontface (FW 11.02)
+ran/cssfontface/index.html
+ran/cssfontface/src/misc.js
+ran/cssfontface/src/main.js
+ran/cssfontface/src/loader.js
+ran/cssfontface/src/worker.js
+ran/cssfontface/src/workers.js
+ran/cssfontface/src/netctrl.js
+ran/cssfontface/src/lapse.js
+ran/cssfontface/src/ps4/constants.js
+ran/cssfontface/src/ps4/kernel.js
+ran/cssfontface/src/ps4/userland.js
+ran/cssfontface/src/ps4/patches/1100.bin
+ran/cssfontface/src/ps4/patches/1102.bin
+
+# slopkit (FW 11.00-11.52, кроме 11.02)
 ran/slopkit/index.html
 ran/slopkit/run_lapse.html
 ran/slopkit/run_poops.html
@@ -29,6 +43,16 @@ ran/slopkit/patches/1150.bin
 ran/slopkit/patches/1200.bin
 ran/slopkit/patches/1250.bin
 ran/slopkit/patches/1300.bin
+
+# rawgame4 (FW 12.00-12.52)
+ran/rawgame4/index.html
+ran/rawgame4/run_lapse.html
+ran/rawgame4/run_poops.html
+ran/rawgame4/chain_lapse_bundle.js
+ran/rawgame4/chain_poops_bundle.js
+ran/rawgame4/rpc_worker.js
+ran/rawgame4/patches/1200.bin
+ran/rawgame4/patches/1250.bin
 
 # g2allpro (FW 5.05-5.07, 10.00)
 ran/g2allpro/index.html
@@ -50,6 +74,17 @@ ran/psfree/lapse_exploit.js
 ran/psfree/lapse_setup.js
 ran/psfree/672entrypoint.js
 ran/psfree/672kexploit.js
+
+# mps (FW 14.00)
+ran/mps/exploit.html
+ran/mps/exploit.html?afterglow=run&mode=goldhen&trusted=1
+ran/mps/exploit.js
+ran/mps/core.js
+ran/mps/mem.js
+ran/mps/int64.js
+ran/mps/ps4_offsets.js
+ran/mps/afterglow.js
+ran/mps/oup/1400.bin
 
 # 1352 (FW 13.02-13.52)
 ran/1352/jb.html
