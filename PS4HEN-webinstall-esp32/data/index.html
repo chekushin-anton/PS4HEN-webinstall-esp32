@@ -413,7 +413,7 @@
                     var cls = e.data.cls || '';
                     appendLog(msg, cls);
                     if (e.data.final) {
-                        if (/ALL DONE|\bDONE\b|Kernel exploit succeeded|PSFree.*exploit.*AIO|AIO fixes applied|GoldHEN.*Loaded|Already [Jj]ailbroken|GoldHEN is Already Loaded|already open|PROOF-SUMMARY-FINAL[^|]*fail=0|===END===/i.test(msg)) {
+                        if (/ALL DONE|\bDONE\b|done\s*--\s*jailbroken|Kernel exploit succeeded|PSFree.*exploit.*AIO|AIO fixes applied|GoldHEN.*Loaded|Already [Jj]ailbroken|GoldHEN is Already Loaded|already open|PROOF-SUMMARY-FINAL[^|]*fail=0|===END===/i.test(msg)) {
                             setAnimState('ok');
                         } else {
                             setAnimState('err');
@@ -445,8 +445,8 @@
             addFrame("ran/g2allpro/index.html", "statusG2");
         } else if (fwNum >= 13.02 && fwNum <= 13.52) {
             addFrame("ran/1352/jb.html?log=1", "status1352");
-        } else if (fwNum === 14.00) {
-            addFrame("ran/mps/exploit.html?afterglow=run&mode=goldhen&trusted=1", "statusMps");
+        } else if (fwNum === 14.00 || fwNum === 14.02) {
+            addFrame("ran/sps/exploit.html?log=1&afterglow=run&mode=goldhen", "status_sps");
         } else {
             appendLog('Неподдерживаемая прошивка: ' + fwVersion, "error");
         }

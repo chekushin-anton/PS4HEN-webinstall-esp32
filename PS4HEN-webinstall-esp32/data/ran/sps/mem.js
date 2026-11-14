@@ -1,4 +1,3 @@
-/* Copyright (c) 2026 mansoor0x | 1_X @ZeroMan. Attribution notice; upstream license remains applicable. */
 import { int64 } from "./int64.js";
 
 import {

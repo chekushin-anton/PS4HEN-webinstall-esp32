@@ -1,4 +1,3 @@
-/* Copyright (c) 2026 mansoor0x | 1_X @ZeroMan. Attribution notice; upstream license remains applicable. */
 function zeroFill(number, width) {
   width -= number.toString().length;
 
