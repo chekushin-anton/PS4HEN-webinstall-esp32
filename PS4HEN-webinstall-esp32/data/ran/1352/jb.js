@@ -3863,6 +3863,7 @@ let allDone = false,
         failCount +
         (allDone ? "" : "  INCOMPLETE"),
     );
+    window.jb1352Result = payloadRunning ? 'ok' : 'fail';
     try {
       finishUI(payloadRunning);
     } catch (eUI) {}
